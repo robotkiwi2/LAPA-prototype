@@ -14,10 +14,19 @@ body {
 /* ── 툴바 ── */
 .toolbar {
   height: 40px; background: #2d2d2d; border-bottom: 1px solid #3a3a3a;
-  display: flex; align-items: center; padding: 0 12px; gap: 8px; flex-shrink: 0;
+  display: flex; align-items: center; padding: 0 8px; gap: 2px; flex-shrink: 0;
 }
-.toolbar-title { font-weight: 600; font-size: 13px; color: #ccc; margin-right: 8px; }
 .spacer { flex: 1; }
+/* 툴바 아이콘 버튼 */
+.tb-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;border:none;background:none;color:#9a9a9a;cursor:pointer;transition:background .1s,color .1s;flex-shrink:0}
+.tb-btn:hover{background:#3c3c3c;color:#ddd}
+.tb-btn.active{background:#094771;color:#4fc1ff}
+.tb-sep{width:1px;height:18px;background:#444;margin:0 5px;flex-shrink:0}
+.tb-input{height:24px;background:#1a1a1a;border:1px solid #3e3e3e;border-radius:4px;color:#ccc;font-size:11px;text-align:center;outline:none;font-family:inherit}
+.tb-input:focus{border-color:#0e8fdd}
+.tb-label{font-size:11px;color:#666;flex-shrink:0;padding:0 2px}
+.tb-page-info{font-size:11px;color:#777;white-space:nowrap;padding:0 5px;flex-shrink:0;min-width:36px;text-align:center}
+.tb-group{height:24px;background:#1a1a1a;border:1px solid #3e3e3e;border-radius:4px;color:#ccc;font-size:11px;padding:0 6px;cursor:pointer;outline:none;max-width:86px}
 .btn {
   padding: 4px 10px; border-radius: 4px; border: 1px solid #555;
   background: #3a3a3a; color: #ccc; cursor: pointer; font-size: 12px; transition: background 0.12s;
@@ -183,10 +192,80 @@ textarea.prop-input { resize: vertical; min-height: 52px; font-family: inherit; 
 <body>
 
 <div class="toolbar">
-  <span class="toolbar-title">📄 2025 PSAT 언어논리 5번</span>
-  <div class="spacer"></div>
-  <button class="btn">저장</button>
-  <button class="btn primary">미리보기</button>
+  <!-- 사이드바 토글 -->
+  <button class="tb-btn" onclick="toggleSidebar()" title="패널">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:14px;height:14px"><rect x="1" y="2" width="14" height="12" rx="1.5"/><line x1="5" y1="2" x2="5" y2="14"/></svg>
+  </button>
+
+  <div class="tb-sep"></div>
+
+  <!-- 페이지 탐색 -->
+  <button class="tb-btn" onclick="changePage(-1)" title="이전 페이지">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><polyline points="10,3 6,8 10,13"/></svg>
+  </button>
+  <span class="tb-page-info" id="tbPageInfo">1 / 3</span>
+  <button class="tb-btn" onclick="changePage(1)" title="다음 페이지">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><polyline points="6,3 10,8 6,13"/></svg>
+  </button>
+  <input class="tb-input" id="pageInput" type="number" value="1" min="1" style="width:34px" onchange="goToPage(+this.value)" title="페이지 이동">
+
+  <div class="tb-sep"></div>
+
+  <!-- 배율 -->
+  <input class="tb-input" id="tbZoom" type="number" value="100" min="20" max="300" style="width:44px" onchange="setZoom(+this.value)" title="배율">
+  <span class="tb-label">%</span>
+
+  <!-- 맞춤 -->
+  <button class="tb-btn" onclick="fitToWidth()" title="너비 맞춤">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" style="width:14px;height:14px"><line x1="1" y1="3" x2="1" y2="13"/><line x1="15" y1="3" x2="15" y2="13"/><line x1="1" y1="8" x2="15" y2="8"/><polyline points="5,5.5 1,8 5,10.5"/><polyline points="11,5.5 15,8 11,10.5"/></svg>
+  </button>
+  <button class="tb-btn" onclick="fitToHeight()" title="높이 맞춤">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" style="width:14px;height:14px"><line x1="3" y1="1" x2="13" y2="1"/><line x1="3" y1="15" x2="13" y2="15"/><line x1="8" y1="1" x2="8" y2="15"/><polyline points="5.5,5 8,1 10.5,5"/><polyline points="5.5,11 8,15 10.5,11"/></svg>
+  </button>
+  <button class="tb-btn" onclick="fitToPage()" title="페이지 맞춤">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" style="width:14px;height:14px"><polyline points="1,5 1,1 5,1"/><polyline points="11,1 15,1 15,5"/><polyline points="15,11 15,15 11,15"/><polyline points="5,15 1,15 1,11"/></svg>
+  </button>
+
+  <div class="tb-sep"></div>
+
+  <!-- 회전 / 미리보기 -->
+  <button class="tb-btn" onclick="rotatePage()" title="90° 회전">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:14px;height:14px"><path d="M13 8A5 5 0 1 1 8 3"/><polyline points="8,1 10.5,3.5 7.5,5.5"/></svg>
+  </button>
+  <button class="tb-btn" onclick="openPreview()" title="미리보기">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:14px;height:14px"><rect x="1" y="2" width="14" height="9" rx="1.5"/><line x1="5" y1="14" x2="11" y2="14"/><line x1="8" y1="11" x2="8" y2="14"/></svg>
+  </button>
+
+  <div class="tb-sep"></div>
+
+  <!-- 도구 선택 -->
+  <button class="tb-btn active" id="tool-select" onclick="setTool(null)" title="선택 도구">
+    <svg viewBox="0 0 16 16" style="width:13px;height:13px"><path d="M3 1.5l10 6.5-5.2.9L5.5 14.5z" fill="currentColor"/></svg>
+  </button>
+  <button class="tb-btn" id="tool-rect" onclick="setTool('rect')" title="사각형 AOI">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:13px;height:13px"><rect x="2" y="3" width="12" height="10" rx="1"/></svg>
+  </button>
+  <button class="tb-btn" id="tool-ellipse" onclick="setTool('ellipse')" title="타원 AOI">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:13px;height:13px"><ellipse cx="8" cy="8" rx="6" ry="5"/></svg>
+  </button>
+  <button class="tb-btn" id="tool-polygon" onclick="setTool('polygon')" title="다각형 AOI">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:13px;height:13px"><polygon points="8,1.5 14.5,9.5 11,14.5 5,14.5 1.5,9.5"/></svg>
+  </button>
+
+  <div class="tb-sep"></div>
+
+  <!-- 그룹 선택 -->
+  <select class="tb-group" id="tbGroupSelect" onchange="setDrawGroup(this.value)" title="AOI 귀속 그룹"></select>
+
+  <div class="tb-sep"></div>
+
+  <!-- 파일 열기 / 삭제 -->
+  <button class="tb-btn" onclick="openFile()" title="파일 열기">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:14px;height:14px"><path d="M1.5 5.5A1.5 1.5 0 0 1 3 4h3.5l1.5 1.5H13A1.5 1.5 0 0 1 14.5 7v5A1.5 1.5 0 0 1 13 13.5H3A1.5 1.5 0 0 1 1.5 12z"/></svg>
+  </button>
+  <button class="tb-btn" onclick="deleteSelected()" title="선택 삭제" style="color:#c77">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:14px;height:14px"><polyline points="2,4 14,4"/><path d="M5,4V3a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v1"/><path d="M3,4l1,9a1.5,1.5,0,0,0,1.5,1.5h5A1.5,1.5,0,0,0,12.5,13L13.5,4"/></svg>
+  </button>
 </div>
 
 <div class="main">
@@ -212,24 +291,6 @@ textarea.prop-input { resize: vertical; min-height: 52px; font-family: inherit; 
   </div>
 
   <div class="pdf-area">
-    <div class="pdf-toolbar">
-      <div class="page-nav">
-        <button class="btn btn-sm" onclick="changePage(-1)">◀</button>
-        <input type="number" id="pageInput" value="1" min="1" max="3" onchange="goToPage(+this.value)">
-        <span>/ 3</span>
-        <button class="btn btn-sm" onclick="changePage(1)">▶</button>
-      </div>
-      <div class="divider"></div>
-      <button class="btn btn-sm" id="tool-rect"    onclick="setTool('rect')">⬜ 사각형</button>
-      <button class="btn btn-sm" id="tool-ellipse" onclick="setTool('ellipse')">⭕ 타원</button>
-      <button class="btn btn-sm" id="tool-polygon" onclick="setTool('polygon')">⬡ 다각형</button>
-      <span class="tool-hint" id="toolHint"></span>
-      <div class="spacer"></div>
-      <label style="font-size:12px;color:#aaa;display:flex;align-items:center;gap:4px;cursor:pointer;">
-        <input type="checkbox" id="toggleAOI" checked onchange="renderAOIs()"> AOI 표시
-      </label>
-    </div>
-
     <div class="pdf-canvas">
       <div class="pdf-page" id="pdfPage">
         <div class="pdf-content">
@@ -528,7 +589,7 @@ function refresh() { renderTrees(); renderAOIs(); renderProp(); }
 // ════════════════════════════════════════
 function goToPage(n) {
   currentPage = Math.max(1, Math.min(pages.length, +n));
-  document.getElementById('pageInput').value = currentPage;
+  updateTbPageInfo();
   renderTrees(); renderAOIs(); renderPageOverlay();
 }
 function changePage(d) { goToPage(currentPage + d); }
@@ -546,15 +607,87 @@ function setTool(t) {
   activeTool = t;
   drawing = null;
   renderPreview();
-  ['rect','ellipse','polygon'].forEach(x => {
+  ['select','rect','ellipse','polygon'].forEach(x => {
     const el = document.getElementById('tool-'+x);
-    if (el) el.classList.toggle('active', x === t);
+    if (el) el.classList.toggle('active', x === (t || 'select'));
   });
-  document.getElementById('toolHint').textContent = t ? HINTS[t] : '';
-  // drawCatcher 활성화 여부
   const catcher = document.getElementById('drawCatcher');
   catcher.style.pointerEvents = t ? 'all' : 'none';
   document.getElementById('pdfPage').style.cursor = t ? 'crosshair' : '';
+}
+
+// ════════════════════════════════════════
+// 툴바 헬퍼
+// ════════════════════════════════════════
+let zoomLevel = 100;
+let pageRotation = 0;
+let sidebarVisible = true;
+
+function toggleSidebar() {
+  sidebarVisible = !sidebarVisible;
+  document.querySelector('.left-panel').style.display = sidebarVisible ? '' : 'none';
+}
+
+function setZoom(v) {
+  zoomLevel = Math.max(20, Math.min(300, v || 100));
+  document.getElementById('tbZoom').value = zoomLevel;
+  const page = document.getElementById('pdfPage');
+  page.style.transform = `scale(${zoomLevel/100}) rotate(${pageRotation}deg)`;
+  page.style.transformOrigin = 'top center';
+}
+
+function fitToWidth() {
+  const canvas = document.querySelector('.pdf-canvas');
+  const v = Math.floor((canvas.clientWidth - 48) / 5.95);
+  setZoom(v);
+}
+function fitToHeight() {
+  const canvas = document.querySelector('.pdf-canvas');
+  const v = Math.floor((canvas.clientHeight - 48) / 8.42);
+  setZoom(v);
+}
+function fitToPage() {
+  const canvas = document.querySelector('.pdf-canvas');
+  const v = Math.min(
+    Math.floor((canvas.clientWidth - 48) / 5.95),
+    Math.floor((canvas.clientHeight - 48) / 8.42)
+  );
+  setZoom(v);
+}
+
+function rotatePage() {
+  pageRotation = (pageRotation + 90) % 360;
+  const page = document.getElementById('pdfPage');
+  page.style.transform = `scale(${zoomLevel/100}) rotate(${pageRotation}deg)`;
+  page.style.transformOrigin = 'top center';
+}
+
+function openPreview() { alert('미리보기 (미구현)'); }
+function openFile()    { alert('파일 열기 (미구현)'); }
+function deleteSelected() {
+  if (!selectedId) return;
+  aois = aois.filter(a => a.id !== selectedId);
+  selectedType = null; selectedId = null;
+  refresh();
+}
+
+function setDrawGroup(gid) {
+  drawGroupId = gid;
+}
+
+function updateTbGroupSelect() {
+  const sel = document.getElementById('tbGroupSelect');
+  if (!sel) return;
+  sel.innerHTML = groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+  if (drawGroupId) sel.value = drawGroupId;
+  else if (groups.length) { drawGroupId = groups[0].id; sel.value = drawGroupId; }
+}
+
+function updateTbPageInfo() {
+  const el = document.getElementById('tbPageInfo');
+  if (el) el.textContent = `${currentPage} / ${pages.length}`;
+  const inp = document.getElementById('pageInput');
+  if (inp) inp.value = currentPage;
 }
 
 // ════════════════════════════════════════
@@ -1147,6 +1280,7 @@ function addGroup() {
   const id = 'g' + (++groupCounter);
   groups.push({ id, name, type, timeLimit:'', tags:[] });
   closeGroupModal();
+  updateTbGroupSelect();
   switchTab('group');
   selectGroupNode(id);
 }
@@ -1173,6 +1307,8 @@ setTool(null);
 applyScale();
 selectDocNode();
 renderPageOverlay();
+updateTbGroupSelect();
+updateTbPageInfo();
 </script>
 </body>
 </html>
