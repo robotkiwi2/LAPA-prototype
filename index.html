@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LAPA 프로토타입 — ReadersEye</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f4f6fb;
+  --card:#fff;
+  --border:#e2e8f0;
+  --text:#1a202c;
+  --sub:#5a6678;
+  --blue:#1a56b0;
+  --blue-lt:#e8f0fe;
+  --green:#1a7a4a;
+  --green-lt:#e6f4ec;
+  --orange:#a65c00;
+  --orange-lt:#fef3e2;
+  --purple:#5b21b6;
+  --purple-lt:#f3eeff;
+  --teal:#0e6b6b;
+  --teal-lt:#e6f7f7;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:0 0 80px}
+
+/* ── 헤더 ── */
+.hero{background:linear-gradient(135deg,#0f2a5e 0%,#1a56b0 60%,#2470d8 100%);color:#fff;padding:56px 24px 48px;text-align:center}
+.hero-tag{display:inline-block;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);border-radius:20px;font-size:12px;font-weight:700;letter-spacing:1px;padding:4px 14px;margin-bottom:20px;color:rgba(255,255,255,.9)}
+.hero h1{font-size:32px;font-weight:800;line-height:1.2;margin-bottom:12px;letter-spacing:-.5px}
+.hero h1 span{color:#7dd3fc}
+.hero p{font-size:15px;color:rgba(255,255,255,.72);max-width:520px;margin:0 auto;line-height:1.7}
+.hero-meta{margin-top:28px;display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap}
+.hero-badge{font-size:12px;color:rgba(255,255,255,.55);display:flex;align-items:center;gap:5px}
+.hero-badge b{color:rgba(255,255,255,.85)}
+
+/* ── 안내 배너 ── */
+.notice{max-width:860px;margin:32px auto 0;padding:0 20px}
+.notice-box{background:#fffbe6;border:1px solid #f5d66e;border-radius:12px;padding:14px 20px;font-size:13px;color:#7a5c00;line-height:1.6;display:flex;gap:10px;align-items:flex-start}
+.notice-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+
+/* ── 섹션 ── */
+.section{max-width:860px;margin:40px auto 0;padding:0 20px}
+.section-title{font-size:11px;font-weight:700;letter-spacing:1.2px;color:#9aa5b8;text-transform:uppercase;margin-bottom:16px}
+
+/* ── 카드 그리드 ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(390px,1fr));gap:16px}
+@media(max-width:600px){.grid{grid-template-columns:1fr}}
+
+.card{background:var(--card);border:1.5px solid var(--border);border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:0;transition:box-shadow .18s,border-color .18s;text-decoration:none;color:inherit;position:relative;overflow:hidden}
+.card:hover{box-shadow:0 8px 32px rgba(26,86,176,.12);border-color:#b8cef5}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;border-radius:16px 16px 0 0;background:var(--card-accent,#1a56b0)}
+
+.card-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px}
+.card-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.card-meta{flex:1}
+.card-tag{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px}
+.card-title{font-size:17px;font-weight:800;color:#11203b;line-height:1.3}
+
+.card-desc{font-size:13.5px;color:var(--sub);line-height:1.75;flex:1;margin-bottom:20px}
+
+.card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:auto}
+.card-who{font-size:11px;color:#9aa5b8;display:flex;align-items:center;gap:5px}
+.card-who-dot{width:6px;height:6px;border-radius:50%}
+.open-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;transition:opacity .14s,transform .1s}
+.open-btn:hover{opacity:.87;transform:translateY(-1px)}
+.open-btn:active{transform:translateY(0)}
+
+/* 카드 컬러 테마 */
+.theme-blue{--card-accent:#1a56b0}
+.theme-blue .card-icon{background:#e8f0fe;color:#1a56b0}
+.theme-blue .card-tag{color:#1a56b0}
+.theme-blue .open-btn{background:#1a56b0;color:#fff}
+
+.theme-green{--card-accent:#1a7a4a}
+.theme-green .card-icon{background:#e6f4ec;color:#1a7a4a}
+.theme-green .card-tag{color:#1a7a4a}
+.theme-green .open-btn{background:#1a7a4a;color:#fff}
+
+.theme-orange{--card-accent:#c47a00}
+.theme-orange .card-icon{background:#fef3e2;color:#a65c00}
+.theme-orange .card-tag{color:#a65c00}
+.theme-orange .open-btn{background:#c47a00;color:#fff}
+
+.theme-purple{--card-accent:#6d28d9}
+.theme-purple .card-icon{background:#f3eeff;color:#5b21b6}
+.theme-purple .card-tag{color:#5b21b6}
+.theme-purple .open-btn{background:#6d28d9;color:#fff}
+
+.theme-teal{--card-accent:#0e6b6b}
+.theme-teal .card-icon{background:#e6f7f7;color:#0e6b6b}
+.theme-teal .card-tag{color:#0e6b6b}
+.theme-teal .open-btn{background:#0e6b6b;color:#fff}
+
+/* ── 플로우 다이어그램 ── */
+.flow{display:flex;align-items:center;gap:0;flex-wrap:wrap;margin-top:4px}
+.flow-step{font-size:11px;color:#5a6678;background:#f1f5fb;border:1px solid #dde3ec;border-radius:6px;padding:3px 9px;white-space:nowrap}
+.flow-arrow{font-size:13px;color:#b0bac9;padding:0 4px}
+
+/* ── 푸터 ── */
+.footer{max-width:860px;margin:52px auto 0;padding:0 20px;text-align:center}
+.footer p{font-size:12px;color:#b0bac9;line-height:1.8}
+.footer a{color:#9aa5b8;text-decoration:none}
+.footer a:hover{color:#1a56b0}
+</style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<div class="hero">
+  <div class="hero-tag">PROTOTYPE PREVIEW</div>
+  <h1>LAPA <span>시선측정</span> 프로토타입</h1>
+  <p>리더스아이 LAPA(Language Ability & Process Analysis) 서비스의 주요 화면을 미리 체험해보실 수 있습니다. 실제 데이터 대신 더미 데이터가 사용됩니다.</p>
+  <div class="hero-meta">
+    <span class="hero-badge">🗓 <b>2025년 6월</b> 프로토타입</span>
+    <span class="hero-badge">📄 <b>5개</b> 화면</span>
+    <span class="hero-badge">🔒 내부 검토용</span>
+  </div>
+</div>
+
+<!-- 안내 -->
+<div class="notice">
+  <div class="notice-box">
+    <span class="notice-icon">💡</span>
+    <div>이 페이지는 이화여대 담당자 분들의 사전 검토를 위한 프로토타입입니다. 모든 데이터는 더미이며, 실제 서비스 UI·기능은 변경될 수 있습니다. 의견이나 피드백은 담당자에게 전달해 주세요.</div>
+  </div>
+</div>
+
+<!-- 수험자 화면 -->
+<div class="section">
+  <div class="section-title">수험자 화면</div>
+  <div class="grid">
+
+    <!-- 키오스크 -->
+    <div class="card theme-blue">
+      <div class="card-head">
+        <div class="card-icon">🖥</div>
+        <div class="card-meta">
+          <div class="card-tag">키오스크</div>
+          <div class="card-title">PSAT 시선측정 키오스크</div>
+        </div>
+      </div>
+      <div class="card-desc">
+        수험생이 키오스크 앞에 앉아 시선측정을 진행하는 전체 흐름입니다.<br><br>
+        <b>포함 화면:</b> 이름·집단 입력 → 글 선택(진단/훈련) → 시선 보정(5점) → 후보정 앵커 → 지문 읽기(좌 60%) + 객관식 풀이(우 40%) → 결과 확인 및 전송
+        <div class="flow" style="margin-top:12px">
+          <span class="flow-step">로그인</span><span class="flow-arrow">›</span>
+          <span class="flow-step">글 선택</span><span class="flow-arrow">›</span>
+          <span class="flow-step">시선 보정</span><span class="flow-arrow">›</span>
+          <span class="flow-step">측정</span><span class="flow-arrow">›</span>
+          <span class="flow-step">결과</span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="card-who">
+          <div class="card-who-dot" style="background:#1a56b0"></div>
+          수험생 대상
+        </div>
+        <a class="open-btn" href="kiosk.html" target="_blank">열기 →</a>
+      </div>
+    </div>
+
+    <!-- 피검사자 자유글 -->
+    <div class="card theme-green">
+      <div class="card-head">
+        <div class="card-icon">👁</div>
+        <div class="card-meta">
+          <div class="card-tag">개별 측정</div>
+          <div class="card-title">자유글 시선측정 (피검사자)</div>
+        </div>
+      </div>
+      <div class="card-desc">
+        피검사자가 자유롭게 제공된 글을 읽는 동안 시선을 측정하는 화면입니다. 키오스크와 달리 문제 풀이 없이 자유 독서 방식으로 진행됩니다.<br><br>
+        <b>포함 화면:</b> 안내 → 글 표시(전체 화면) → 측정 진행 표시 → 완료
+      </div>
+      <div class="card-footer">
+        <div class="card-who">
+          <div class="card-who-dot" style="background:#1a7a4a"></div>
+          수험생 대상
+        </div>
+        <a class="open-btn" href="freegaze-testee.html" target="_blank">열기 →</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 연구자/관리자 화면 -->
+<div class="section">
+  <div class="section-title">연구자 · 관리자 화면</div>
+  <div class="grid">
+
+    <!-- 시선 분석 결과 -->
+    <div class="card theme-purple">
+      <div class="card-head">
+        <div class="card-icon">📊</div>
+        <div class="card-meta">
+          <div class="card-tag">분석 뷰어</div>
+          <div class="card-title">시선 분석 결과 뷰어</div>
+        </div>
+      </div>
+      <div class="card-desc">
+        연구자가 수집된 시선 데이터를 분석하는 화면입니다. 여러 참여자의 시선 경로를 동시에 비교할 수 있습니다.<br><br>
+        <b>주요 기능:</b> 시선경로 재생(응시·비짓 모드) / Scarf 이동경로 다이어그램 / AOI 전이 매트릭스 / 참여자 간 유사도 비교(Levenshtein·LCS·Bigram)
+      </div>
+      <div class="card-footer">
+        <div class="card-who">
+          <div class="card-who-dot" style="background:#6d28d9"></div>
+          연구자 대상
+        </div>
+        <a class="open-btn" href="gaze-result.html" target="_blank">열기 →</a>
+      </div>
+    </div>
+
+    <!-- PDF AOI 편집기 -->
+    <div class="card theme-orange">
+      <div class="card-head">
+        <div class="card-icon">✏️</div>
+        <div class="card-meta">
+          <div class="card-tag">콘텐츠 편집</div>
+          <div class="card-title">PDF AOI 편집기</div>
+        </div>
+      </div>
+      <div class="card-desc">
+        시선측정에 사용할 지문(PDF)에 AOI(관심 영역) 구역을 직접 지정하는 편집 도구입니다.<br><br>
+        <b>주요 기능:</b> 드래그로 AOI 박스 그리기 / 영역 이름·유형 지정 / 페이지별 관리 / AOI 목록 편집
+      </div>
+      <div class="card-footer">
+        <div class="card-who">
+          <div class="card-who-dot" style="background:#c47a00"></div>
+          관리자 대상
+        </div>
+        <a class="open-btn" href="pdf-editor.html" target="_blank">열기 →</a>
+      </div>
+    </div>
+
+    <!-- 문서 목록 -->
+    <div class="card theme-teal">
+      <div class="card-head">
+        <div class="card-icon">📁</div>
+        <div class="card-meta">
+          <div class="card-tag">콘텐츠 관리</div>
+          <div class="card-title">측정 문서 목록</div>
+        </div>
+      </div>
+      <div class="card-desc">
+        시선측정에 사용되는 지문 문서들을 관리하는 목록 화면입니다.<br><br>
+        <b>주요 기능:</b> 문서 목록 조회 / 난이도·주제·유형 필터 / 문서 상태(활성·비활성) 관리 / 신규 문서 등록
+      </div>
+      <div class="card-footer">
+        <div class="card-who">
+          <div class="card-who-dot" style="background:#0e6b6b"></div>
+          관리자 대상
+        </div>
+        <a class="open-btn" href="doc-list.html" target="_blank">열기 →</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 푸터 -->
+<div class="footer">
+  <p>
+    ReadersEye LAPA 프로토타입 &nbsp;·&nbsp; 내부 검토용 &nbsp;·&nbsp; 2025<br>
+    <a href="https://github.com/robotkiwi2/LAPA-prototype" target="_blank">github.com/robotkiwi2/LAPA-prototype</a>
+  </p>
+</div>
+
+</body>
+</html>
