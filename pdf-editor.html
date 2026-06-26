@@ -259,6 +259,13 @@ textarea.prop-input { resize: vertical; min-height: 52px; font-family: inherit; 
 
   <div class="tb-sep"></div>
 
+  <!-- AOI 표시 -->
+  <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#888;cursor:pointer;flex-shrink:0;padding:0 2px">
+    <input type="checkbox" id="toggleAOI" checked onchange="renderAOIs()" style="accent-color:#0e8fdd;cursor:pointer"> AOI 표시
+  </label>
+
+  <div class="tb-sep"></div>
+
   <!-- 파일 열기 / 삭제 -->
   <button class="tb-btn" onclick="openFile()" title="파일 열기">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:14px;height:14px"><path d="M1.5 5.5A1.5 1.5 0 0 1 3 4h3.5l1.5 1.5H13A1.5 1.5 0 0 1 14.5 7v5A1.5 1.5 0 0 1 13 13.5H3A1.5 1.5 0 0 1 1.5 12z"/></svg>
