@@ -84,7 +84,7 @@ body {
 .indent-2 { padding-left: 30px; }
 
 /* 프로퍼티 패널 */
-.property-panel { border-top: 1px solid #3a3a3a; overflow-y: auto; max-height: 46%; flex-shrink: 0; }
+.property-panel { border-top: 1px solid #3a3a3a; overflow-y: auto; min-height: 80px; max-height: 46%; flex-shrink: 0; }
 .prop-section { padding: 10px 12px; }
 .prop-section + .prop-section { border-top: 1px solid #333; }
 .prop-title { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
@@ -275,12 +275,12 @@ textarea.prop-input { resize: vertical; min-height: 52px; font-family: inherit; 
       <div class="tab" id="tab-group" onclick="switchTab('group')">그룹 뷰</div>
     </div>
 
-    <div id="view-page" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+    <div id="view-page" style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
       <div class="panel-header">문서 구조<button class="icon-btn" onclick="selectDocNode()">⚙</button></div>
       <div class="tree" id="pageTree"></div>
     </div>
 
-    <div id="view-group" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+    <div id="view-group" style="display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
       <div class="panel-header">그룹<button class="icon-btn" onclick="openGroupModal()">＋ 그룹</button></div>
       <div class="tree" id="groupTree"></div>
     </div>
@@ -789,7 +789,8 @@ function finishPolygon() {
 // SVG AOI 렌더
 // ════════════════════════════════════════
 function renderAOIs() {
-  const show = document.getElementById('toggleAOI').checked;
+  const toggleEl = document.getElementById('toggleAOI');
+  const show = toggleEl ? toggleEl.checked : true;
   const shapesG  = document.getElementById('aoiShapes');
   const handlesG = document.getElementById('aoiHandles');
   shapesG.innerHTML = '';
