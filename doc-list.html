@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>자유글 — 리더스아이</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;font-size:13px;background:#f0f2f5;color:#333;min-height:100vh}
+
+/* ── 상단 탭 ── */
+.top-tabs{background:#fff;border-bottom:1px solid #ddd;display:flex}
+.top-tab{padding:13px 22px;font-size:13px;color:#666;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+.top-tab:hover{color:#1a56b0;background:#f8f9fa}
+.top-tab.active{color:#fff;background:#1a56b0;border-bottom-color:#1a56b0;font-weight:600}
+
+/* ── 콘텐츠 래퍼 ── */
+.page{padding:20px;display:flex;flex-direction:column;gap:16px;max-width:1400px;margin:0 auto}
+
+/* ── 섹션 공통 ── */
+.section{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden}
+.sec-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #eee;cursor:pointer;user-select:none}
+.sec-title{font-size:14px;font-weight:700;color:#1a1a1a;display:flex;align-items:center;gap:8px}
+.sec-title .org{font-size:12px;color:#888;font-weight:400}
+.sec-toggle{color:#aaa;font-size:16px;transition:transform .2s}
+.sec-toggle.closed{transform:rotate(-90deg)}
+
+/* ── 그룹 탭 바 ── */
+.group-tab-bar{display:flex;align-items:center;padding:0 20px;border-bottom:1px solid #eee;background:#fafafa;gap:0}
+.group-tabs{display:flex;flex:1;gap:0}
+.g-tab{padding:9px 16px;font-size:12px;color:#888;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;display:flex;align-items:center;gap:4px}
+.g-tab:hover{color:#1a56b0}
+.g-tab.active{color:#1a56b0;border-bottom-color:#1a56b0;font-weight:600}
+.g-count{font-size:10px;background:#e8e8e8;color:#777;border-radius:8px;padding:1px 6px;font-weight:600}
+.g-tab.active .g-count{background:#dbeafe;color:#1a56b0}
+
+/* 추가 버튼 */
+.btn-add{padding:5px 12px;border-radius:5px;border:1px solid #1a56b0;background:#fff;color:#1a56b0;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px;margin:auto 0}
+.btn-add:hover{background:#eef4ff}
+
+/* ── 카드 카운터 (섹션 헤더) ── */
+.doc-counter{font-size:12px;color:#888;font-weight:400;margin-left:4px}
+.doc-counter span{color:#1a56b0;font-weight:700}
+
+/* ── 카드 카로셀 ── */
+.carousel-wrap{padding:18px 20px;overflow-x:auto}
+.carousel{display:flex;gap:14px;min-width:min-content}
+
+/* ── 문서 카드 ── */
+.doc-card{width:190px;flex-shrink:0;border:2px solid #e8e8e8;border-radius:8px;background:#fff;cursor:pointer;transition:border-color .15s,box-shadow .15s;position:relative;overflow:visible}
+.doc-card:hover{border-color:#9dbce8;box-shadow:0 2px 10px rgba(26,86,176,.12)}
+.doc-card.selected{border-color:#1a56b0;box-shadow:0 2px 12px rgba(26,86,176,.2)}
+
+/* 썸네일 */
+.card-thumb{height:100px;background:#f0f4f8;border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.thumb-svg{opacity:.55}
+.card-badge{position:absolute;bottom:6px;left:6px;font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600;color:#fff}
+.badge-kor{background:#2e7d32}
+.badge-eng{background:#1565c0}
+.badge-etc{background:#6a1b9a}
+
+/* 메뉴 버튼 */
+.card-menu-btn{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.85);border:none;cursor:pointer;font-size:15px;color:#555;display:flex;align-items:center;justify-content:center;z-index:10}
+.card-menu-btn:hover{background:#fff;color:#1a56b0}
+.card-dropdown{position:absolute;top:32px;right:6px;background:#fff;border:1px solid #ddd;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.14);z-index:100;min-width:110px;display:none;flex-direction:column}
+.card-dropdown.open{display:flex}
+.dd-item{padding:9px 14px;font-size:12px;color:#333;cursor:pointer;display:flex;align-items:center;gap:7px}
+.dd-item:hover{background:#f0f4ff;color:#1a56b0}
+.dd-item.danger{color:#c62828}
+.dd-item.danger:hover{background:#fff5f5}
+
+/* 카드 본문 */
+.card-body{padding:10px 12px 12px}
+.card-title{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-desc{font-size:11px;color:#888;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:33px}
+.card-stats{display:flex;gap:10px;margin-top:9px;padding-top:9px;border-top:1px solid #f0f0f0}
+.card-stat{font-size:11px;color:#888;display:flex;align-items:center;gap:3px}
+.card-stat strong{color:#444;font-weight:600}
+
+/* ── 테이블 툴바 ── */
+.table-toolbar{display:flex;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid #eee;flex-wrap:wrap}
+.filter-tag{background:#e8f0fe;color:#1a56b0;border-radius:4px;padding:3px 10px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:5px}
+.filter-tag .rm{cursor:pointer;color:#5a7abf;font-size:13px}
+.filter-tag .rm:hover{color:#c62828}
+.tb-spacer{flex:1}
+.btn{padding:6px 14px;border-radius:5px;border:1px solid #ddd;background:#fff;font-size:12px;color:#333;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.btn:hover{background:#f5f5f5}
+.btn.primary{background:#1a56b0;border-color:#1a56b0;color:#fff;font-weight:600}
+.btn.primary:hover{background:#1344a0}
+.btn.danger{background:#fff;border-color:#e57373;color:#c62828}
+.btn.danger:hover{background:#fff5f5}
+.bulk-actions{display:flex;align-items:center;gap:8px}
+
+/* ── 테이블 ── */
+.tbl-wrap{overflow-x:auto;padding:0 20px 16px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:#f5f7fa;text-align:left;color:#555;font-weight:600;border-bottom:2px solid #e0e0e0;white-space:nowrap;user-select:none;padding:0}
+.th-inner{display:flex;flex-direction:column}
+.th-label{padding:8px 12px;display:flex;align-items:center;gap:4px}
+.th-label.sort-btn{cursor:pointer}
+.th-label.sort-btn:hover{color:#1a56b0}
+.th-label.sort-btn.asc::after{content:' ▲';font-size:10px;color:#1a56b0}
+.th-label.sort-btn.desc::after{content:' ▼';font-size:10px;color:#1a56b0}
+.th-filter input{width:100%;border:none;border-top:1px solid #e0e0e0;padding:4px 10px;font-size:11px;color:#333;outline:none;background:#fff;box-sizing:border-box}
+.th-filter input:focus{background:#f0f4ff}
+.th-filter input::placeholder{color:#bbb}
+tbody tr{border-bottom:1px solid #f0f0f0;cursor:pointer}
+tbody tr:hover{background:#f8faff}
+tbody tr.checked-row{background:#eef4ff}
+tbody td{padding:8px 12px;color:#444;vertical-align:middle}
+tbody td.mono{font-family:monospace;font-size:11px;color:#666}
+input[type=checkbox]{width:14px;height:14px;accent-color:#1a56b0;cursor:pointer}
+.ref-chk{display:flex;justify-content:center}
+
+/* 참조측정 뱃지 */
+.ref-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;border-radius:3px;padding:1px 6px;font-weight:600}
+
+/* 페이지네이션 */
+.pagination{display:flex;align-items:center;justify-content:space-between;padding:10px 20px 16px;font-size:12px;color:#888;border-top:1px solid #f0f0f0}
+.page-btns{display:flex;gap:6px;align-items:center}
+.page-btn{padding:4px 10px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;font-size:12px;color:#555}
+.page-btn:hover{background:#f0f0f0}
+.page-btn.disabled{opacity:.4;pointer-events:none}
+.page-input{width:36px;border:1px solid #ddd;border-radius:4px;padding:3px 5px;text-align:center;font-size:12px}
+.empty-state{padding:40px;text-align:center;color:#bbb;font-size:13px}
+
+/* ── 모달 ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.18);width:380px;padding:28px 28px 24px;display:flex;flex-direction:column;gap:18px}
+.modal h3{font-size:16px;font-weight:700;color:#1a1a1a}
+.modal-row{display:flex;flex-direction:column;gap:6px}
+.modal-row label{font-size:12px;color:#555;font-weight:600}
+.modal-row input,.modal-row select{border:1px solid #ddd;border-radius:6px;padding:8px 12px;font-size:13px;color:#333;outline:none}
+.modal-row input:focus,.modal-row select:focus{border-color:#1a56b0}
+.modal-btns{display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
+.modal-btns .btn-cancel{padding:7px 18px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#666;font-size:13px;cursor:pointer}
+.modal-btns .btn-cancel:hover{background:#f5f5f5}
+.modal-btns .btn-create{padding:7px 18px;border:none;border-radius:6px;background:#1a56b0;color:#fff;font-size:13px;font-weight:700;cursor:pointer}
+.modal-btns .btn-create:hover{background:#1344a0}
+</style>
+</head>
+<body>
+
+<!-- 상단 탭 -->
+<div class="top-tabs">
+  <div class="top-tab">읽기진단</div>
+  <div class="top-tab">훈련</div>
+  <div class="top-tab">인지 검사</div>
+  <div class="top-tab active">자유글</div>
+  <div class="top-tab">구독 및 결제</div>
+  <div class="top-tab">정보</div>
+  <div class="top-tab">진단사이트 설정</div>
+  <div class="top-tab">소통</div>
+</div>
+
+<div class="page">
+
+  <!-- 섹션 1: 문서 현황 -->
+  <div class="section">
+    <div class="sec-head" onclick="toggleSec('sec1-body','sec1-tog')">
+      <div class="sec-title">
+        문서 현황
+        <span class="org">리더스아이 연구센터</span>
+        <span class="doc-counter" id="docCounter"></span>
+      </div>
+      <span class="sec-toggle" id="sec1-tog">∨</span>
+    </div>
+
+    <div id="sec1-body">
+      <div class="group-tab-bar">
+        <div class="group-tabs" id="groupTabs"></div>
+        <button class="btn-add" onclick="openAddModal()">＋ 추가</button>
+      </div>
+      <div class="carousel-wrap">
+        <div class="carousel" id="carousel"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 섹션 2: 측정 결과 -->
+  <div class="section">
+    <div class="sec-head" onclick="toggleSec('sec2-body','sec2-tog')">
+      <div class="sec-title">
+        측정 결과
+        <span class="org">리더스아이 연구센터</span>
+      </div>
+      <span class="sec-toggle" id="sec2-tog">∨</span>
+    </div>
+
+    <div id="sec2-body">
+      <div class="table-toolbar">
+        <div id="filterTag" style="display:none" class="filter-tag">
+          <span id="filterTagText"></span>
+          <span class="rm" onclick="clearFilter()">✕</span>
+        </div>
+        <div class="tb-spacer"></div>
+        <div class="bulk-actions" id="bulkActions" style="display:none">
+          <button class="btn primary" onclick="doAnalyze()">📊 분석</button>
+          <button class="btn danger" onclick="doDelete()">🗑 선택 삭제</button>
+        </div>
+        <button class="btn" onclick="alert('다운로드')">📥 다운로드</button>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead id="tblHead">
+            <tr>
+              <th style="width:36px"><div class="th-inner"><div class="th-label"><input type="checkbox" id="chkAll" onclick="toggleAll(this)"></div><div class="th-filter"><input placeholder="" disabled style="background:#f5f7fa"></div></div></th>
+              <th><div class="th-inner"><div class="th-label sort-btn" onclick="setSort('nick')" id="sh-nick">닉네임</div><div class="th-filter"><input placeholder="검색" oninput="renderTable()"></div></div></th>
+              <th><div class="th-inner"><div class="th-label sort-btn" onclick="setSort('sid')"  id="sh-sid">학생ID</div><div class="th-filter"><input placeholder="검색" oninput="renderTable()"></div></div></th>
+              <th><div class="th-inner"><div class="th-label sort-btn" onclick="setSort('date')" id="sh-date">수행일시</div><div class="th-filter"><input placeholder="검색" oninput="renderTable()"></div></div></th>
+              <th><div class="th-inner"><div class="th-label sort-btn" onclick="setSort('file')" id="sh-file">파일명</div><div class="th-filter"><input placeholder="검색" oninput="renderTable()"></div></div></th>
+              <th style="width:90px"><div class="th-inner"><div class="th-label sort-btn" onclick="setSort('dur')" id="sh-dur">측정 시간</div><div class="th-filter"><input placeholder="" disabled style="background:#f5f7fa"></div></div></th>
+              <th style="width:80px;text-align:center"><div class="th-inner"><div class="th-label sort-btn" onclick="setSort('ref')" id="sh-ref" style="justify-content:center">참조측정</div><div class="th-filter"><input placeholder="" disabled style="background:#f5f7fa"></div></div></th>
+            </tr>
+          </thead>
+          <tbody id="tblBody"></tbody>
+        </table>
+        <div id="emptyState" class="empty-state" style="display:none">표시할 결과가 없습니다.</div>
+      </div>
+
+      <div class="pagination">
+        <span id="paginInfo">총 0건</span>
+        <div class="page-btns">
+          <button class="page-btn disabled">＜</button>
+          <span>Page <input class="page-input" value="1"> of 1</span>
+          <select style="padding:3px 6px;border:1px solid #ddd;border-radius:4px;font-size:12px">
+            <option>10 rows</option><option>20 rows</option><option>50 rows</option>
+          </select>
+          <button class="page-btn disabled">＞</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 문서 추가 모달 -->
+<div class="modal-bg" id="addModal" onclick="if(event.target===this)closeAddModal()">
+  <div class="modal">
+    <h3>📄 문서 추가</h3>
+    <div class="modal-row">
+      <label>문서 이름</label>
+      <input id="newDocName" placeholder="예: 2024 PSAT 언어논리 나형" />
+    </div>
+    <div class="modal-row">
+      <label>그룹</label>
+      <select id="newDocGroup">
+        <option value="수능국어">수능국어</option>
+        <option value="PSAT">PSAT</option>
+        <option value="영어">영어</option>
+        <option value="기타" selected>기타</option>
+      </select>
+    </div>
+    <div class="modal-row">
+      <label>언어</label>
+      <select id="newDocLang">
+        <option value="kor">한국어</option>
+        <option value="eng">영어</option>
+      </select>
+    </div>
+    <div class="modal-row">
+      <label>설명</label>
+      <input id="newDocDesc" placeholder="간단한 문서 설명" />
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeAddModal()">취소</button>
+      <button class="btn-create" onclick="createDoc()">생성</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// 데이터
+// ════════════════════════════════════════
+const MAX_DOCS = 50;
+const GROUPS_ALL = ['전체','수능국어','PSAT','영어','기타'];
+
+let DOCS = [
+  { id:'d1', group:'기타',    lang:'kor', title:'패션디자인',             desc:'패션 디자인의 역사와 현대 트렌드에 관한 지문.', pages:4, aois:12, cnt:3  },
+  { id:'d2', group:'기타',    lang:'kor', title:'네이버스마트스토어',       desc:'온라인 스마트스토어 창업 및 운영 전략 문서.', pages:6, aois:18, cnt:8  },
+  { id:'d3', group:'수능국어', lang:'kor', title:'2023 수능국어 홀수 1-3',  desc:'2023학년도 수능 국어 홀수형 1~3번 지문 및 문항.', pages:3, aois:21, cnt:5  },
+  { id:'d4', group:'PSAT',    lang:'kor', title:'PSAT 언어논리(가)',        desc:'5급 공채 PSAT 언어논리 가책형 지문.', pages:5, aois:28, cnt:12 },
+  { id:'d5', group:'수능국어', lang:'kor', title:'2020 수능 생명과학',       desc:'2020학년도 수능 생명과학Ⅱ 세포 분열 관련 지문.', pages:2, aois:15, cnt:2  },
+  { id:'d6', group:'영어',    lang:'eng', title:'Alice in Wonderland',     desc:'Lewis Carroll 고전 동화. 영어 독해 훈련용.', pages:8, aois:32, cnt:4  },
+  { id:'d7', group:'영어',    lang:'eng', title:'Spike S-Type Manual',     desc:'자전거 전문 교재. 기술 영어 읽기 측정.', pages:3, aois:11, cnt:1  },
+];
+let docCounter = 8;
+
+let RESULTS = [
+  { id:'r1',  docId:'d2', nick:'한산도', sid:'bnr2xvcxcv', date:'2026-04-01 14:43', file:'네이버스마트스토어',    dur:754,  ref:false },
+  { id:'r2',  docId:'d2', nick:'한산도', sid:'bnr2xvcxcv', date:'2026-04-01 12:15', file:'네이버버웍스 회면',     dur:612,  ref:false },
+  { id:'r3',  docId:'d3', nick:'김영심', sid:'hw_test_15', date:'2026-03-20 10:49', file:'2022 국어 홀수',      dur:480,  ref:true  },
+  { id:'r4',  docId:'d3', nick:'한산도', sid:'bnr2xvcxcv', date:'2026-02-26 11:32', file:'2022 국어 홀수',      dur:503,  ref:false },
+  { id:'r5',  docId:'d3', nick:'한산도', sid:'bnr2xvcxcv', date:'2026-01-19 12:26', file:'2022 국어 홀수',      dur:467,  ref:false },
+  { id:'r6',  docId:'d4', nick:'박지수', sid:'pjs_2025',   date:'2026-03-15 09:30', file:'PSAT 언어논리(가)',   dur:1023, ref:true  },
+  { id:'r7',  docId:'d4', nick:'이민준', sid:'lmj_007',    date:'2026-03-10 14:20', file:'PSAT 언어논리(가)',   dur:891,  ref:false },
+  { id:'r8',  docId:'d6', nick:'Sarah K', sid:'sk_eng01',  date:'2026-02-28 11:00', file:'Alice in Wonderland', dur:345,  ref:false },
+  { id:'r9',  docId:'d1', nick:'최유진', sid:'choi_yj',    date:'2026-02-14 16:45', file:'패션디자인',          dur:228,  ref:false },
+  { id:'r10', docId:'d4', nick:'정태호', sid:'jth_psat',   date:'2026-01-30 10:11', file:'PSAT 언어논리(가)',   dur:776,  ref:false },
+];
+
+// ════════════════════════════════════════
+// 상태
+// ════════════════════════════════════════
+let activeGroup = '전체';
+let selectedDocId = null;
+let checkedRows = new Set(RESULTS.map(r=>r.id));
+let refRows = new Set(RESULTS.filter(r=>r.ref).map(r=>r.id));
+let openMenuId = null;
+let sortCol = 'date';
+let sortDir = 'desc';
+
+// ════════════════════════════════════════
+// 썸네일
+// ════════════════════════════════════════
+function thumbSvg(doc) {
+  const bg = doc.lang==='eng' ? '#dbeafe' : '#e8f5e9';
+  const lc = doc.lang==='eng' ? '#93c5fd' : '#a5d6a7';
+  // 고정된 라인 폭 패턴 (id 해시로 일관성 유지)
+  const seed = doc.id.charCodeAt(1) || 3;
+  let lines = '';
+  for (let i=0;i<7;i++) {
+    const w = 28 + ((seed*7+i*13)%40);
+    lines += `<rect x="${(100-w)/2}" y="${28+i*9}" width="${w}" height="4" rx="2" fill="${lc}"/>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80" width="100" height="80" class="thumb-svg">
+    <rect width="100" height="80" fill="${bg}"/>
+    <rect x="28" y="8" width="44" height="58" rx="3" fill="#fff" stroke="#ccc" stroke-width="1"/>
+    ${lines}
+    <rect x="36" y="8" width="10" height="10" rx="1" fill="#e0e0e0"/>
+  </svg>`;
+}
+
+// ════════════════════════════════════════
+// 그룹 탭
+// ════════════════════════════════════════
+function groupCount(g) {
+  return g==='전체' ? DOCS.length : DOCS.filter(d=>d.group===g).length;
+}
+function renderGroupTabs() {
+  document.getElementById('groupTabs').innerHTML = GROUPS_ALL.map(g =>
+    `<div class="g-tab ${g===activeGroup?'active':''}" onclick="setGroup('${g}')">
+      ${g}<span class="g-count">${groupCount(g)}</span>
+    </div>`
+  ).join('');
+  // 문서 카운터
+  document.getElementById('docCounter').innerHTML =
+    `(<span>${DOCS.length}</span>/${MAX_DOCS})`;
+}
+function setGroup(g) {
+  activeGroup = g;
+  renderGroupTabs();
+  renderCarousel();
+}
+
+// ════════════════════════════════════════
+// 카로셀
+// ════════════════════════════════════════
+function renderCarousel() {
+  const docs = DOCS.filter(d => activeGroup==='전체' || d.group===activeGroup);
+  const carousel = document.getElementById('carousel');
+  if (!docs.length) {
+    carousel.innerHTML = '<div style="color:#bbb;font-size:13px;padding:20px">등록된 문서가 없습니다.</div>';
+    return;
+  }
+  carousel.innerHTML = docs.map(doc => {
+    const badgeClass = doc.lang==='eng' ? 'badge-eng' : doc.group==='기타' ? 'badge-etc' : 'badge-kor';
+    const badgeText  = doc.lang==='eng' ? 'ENG' : doc.group;
+    const isSel = doc.id === selectedDocId;
+    return `
+    <div class="doc-card ${isSel?'selected':''}" id="card-${doc.id}" onclick="selectDoc('${doc.id}')">
+      <button class="card-menu-btn" onclick="event.stopPropagation();toggleMenu('${doc.id}')">⋮</button>
+      <div class="card-dropdown" id="menu-${doc.id}">
+        <div class="dd-item" onclick="event.stopPropagation();doCardAction('분석','${doc.id}')">📊 분석</div>
+        <div class="dd-item" onclick="event.stopPropagation();doCardAction('편집','${doc.id}')">✏️ 편집</div>
+        <div class="dd-item danger" onclick="event.stopPropagation();doCardAction('삭제','${doc.id}')">🗑 삭제</div>
+      </div>
+      <div class="card-thumb">
+        ${thumbSvg(doc)}
+        <span class="card-badge ${badgeClass}">${badgeText}</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title" title="${doc.title}">${doc.title}</div>
+        <div class="card-desc">${doc.desc}</div>
+        <div class="card-stats">
+          <div class="card-stat"><strong>${doc.pages}</strong>p</div>
+          <div class="card-stat"><strong>${doc.cnt}</strong>측정</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectDoc(docId) {
+  selectedDocId = selectedDocId === docId ? null : docId;
+  const pool = selectedDocId ? RESULTS.filter(r=>r.docId===selectedDocId) : RESULTS;
+  checkedRows = new Set(pool.map(r=>r.id));
+  renderCarousel();
+  renderTable();
+  updateFilterTag();
+}
+
+function toggleMenu(docId) {
+  if (openMenuId && openMenuId !== docId) {
+    const prev = document.getElementById('menu-'+openMenuId);
+    if (prev) prev.classList.remove('open');
+  }
+  const el = document.getElementById('menu-'+docId);
+  el.classList.toggle('open');
+  openMenuId = el.classList.contains('open') ? docId : null;
+}
+
+document.addEventListener('click', () => {
+  if (openMenuId) {
+    const el = document.getElementById('menu-'+openMenuId);
+    if (el) el.classList.remove('open');
+    openMenuId = null;
+  }
+});
+
+function doCardAction(action, docId) {
+  const doc = DOCS.find(d=>d.id===docId);
+  if (action==='삭제') {
+    if (!confirm(`"${doc.title}"을(를) 삭제하시겠습니까?`)) return;
+    DOCS = DOCS.filter(d=>d.id!==docId);
+    if (selectedDocId===docId) { selectedDocId=null; updateFilterTag(); }
+    renderGroupTabs(); renderCarousel(); renderTable();
+  } else if (action==='편집') {
+    alert(`"${doc.title}" 편집 화면으로 이동 (PDF AOI 편집기)`);
+  } else if (action==='분석') {
+    alert(`"${doc.title}" 분석 결과 화면으로 이동`);
+  }
+}
+
+// ════════════════════════════════════════
+// 모달
+// ════════════════════════════════════════
+function openAddModal() {
+  document.getElementById('newDocName').value = '';
+  document.getElementById('newDocDesc').value = '';
+  document.getElementById('addModal').classList.add('open');
+  setTimeout(()=>document.getElementById('newDocName').focus(), 50);
+}
+function closeAddModal() {
+  document.getElementById('addModal').classList.remove('open');
+}
+function createDoc() {
+  const name = document.getElementById('newDocName').value.trim();
+  if (!name) { alert('문서 이름을 입력해주세요.'); return; }
+  if (DOCS.length >= MAX_DOCS) { alert(`최대 ${MAX_DOCS}개까지 등록 가능합니다.`); return; }
+  const group = document.getElementById('newDocGroup').value;
+  const lang  = document.getElementById('newDocLang').value;
+  const desc  = document.getElementById('newDocDesc').value.trim() || '설명 없음';
+  const id = 'd' + (docCounter++);
+  DOCS.push({ id, group, lang, title:name, desc, pages:0, aois:0, cnt:0 });
+  closeAddModal();
+  // 해당 그룹 탭으로 이동
+  activeGroup = group;
+  renderGroupTabs();
+  renderCarousel();
+}
+
+// ════════════════════════════════════════
+// 필터 태그
+// ════════════════════════════════════════
+function updateFilterTag() {
+  const el  = document.getElementById('filterTag');
+  const txt = document.getElementById('filterTagText');
+  if (selectedDocId) {
+    const doc = DOCS.find(d=>d.id===selectedDocId);
+    txt.textContent = doc ? doc.title : '';
+    el.style.display = 'flex';
+  } else {
+    el.style.display = 'none';
+  }
+}
+function clearFilter() {
+  selectedDocId = null;
+  checkedRows = new Set(RESULTS.map(r=>r.id));
+  renderCarousel();
+  renderTable();
+  updateFilterTag();
+}
+
+// ════════════════════════════════════════
+// 정렬
+// ════════════════════════════════════════
+function setSort(col) {
+  if (sortCol === col) sortDir = sortDir==='asc' ? 'desc' : 'asc';
+  else { sortCol = col; sortDir = 'asc'; }
+  renderTable();
+}
+function updateSortHeaders() {
+  ['nick','sid','date','file','dur','ref'].forEach(c => {
+    const el = document.getElementById('sh-'+c);
+    if (!el) return;
+    el.classList.remove('asc','desc');
+    if (sortCol===c) el.classList.add(sortDir);
+  });
+}
+function applySortRows(rows) {
+  return rows.slice().sort((a,b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    let cmp;
+    if (typeof va === 'number' || typeof va === 'boolean') { cmp = (va===true?1:va===false?0:va) - (vb===true?1:vb===false?0:vb); }
+    else { va=(va||'').toLowerCase(); vb=(vb||'').toLowerCase(); cmp=va<vb?-1:va>vb?1:0; }
+    return sortDir==='asc' ? cmp : -cmp;
+  });
+}
+function fmtDur(sec) {
+  const m = Math.floor(sec/60), s = sec%60;
+  return m>0 ? `${m}분 ${s}초` : `${s}초`;
+}
+
+// ════════════════════════════════════════
+// 컬럼 필터 값 읽기
+// ════════════════════════════════════════
+function colFilter(idx) {
+  const inputs = document.querySelectorAll('.th-filter input');
+  return inputs[idx] ? inputs[idx].value.toLowerCase() : '';
+}
+
+// ════════════════════════════════════════
+// 테이블 렌더
+// ════════════════════════════════════════
+function renderTable() {
+  const fNick = colFilter(1), fSid = colFilter(2), fDate = colFilter(3),
+        fFile = colFilter(4);
+
+  let rows = selectedDocId
+    ? RESULTS.filter(r => r.docId === selectedDocId)
+    : [...RESULTS];
+
+  if (fNick) rows = rows.filter(r => r.nick.toLowerCase().includes(fNick));
+  if (fSid)  rows = rows.filter(r => r.sid.toLowerCase().includes(fSid));
+  if (fDate) rows = rows.filter(r => r.date.includes(fDate));
+  if (fFile) rows = rows.filter(r => r.file.toLowerCase().includes(fFile));
+
+  rows = applySortRows(rows);
+  updateSortHeaders();
+
+  const tbody = document.getElementById('tblBody');
+  const empty = document.getElementById('emptyState');
+  document.getElementById('paginInfo').textContent = `총 ${rows.length}건`;
+
+  if (!rows.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    document.getElementById('chkAll').checked = false;
+    updateBulkActions();
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = rows.map(r => {
+    const isRef = refRows.has(r.id);
+    return `
+    <tr class="${checkedRows.has(r.id)?'checked-row':''}" onclick="toggleRow('${r.id}',event)">
+      <td onclick="event.stopPropagation()">
+        <input type="checkbox" ${checkedRows.has(r.id)?'checked':''} onchange="onRowCheck('${r.id}',this.checked)">
+      </td>
+      <td><strong>${r.nick}</strong></td>
+      <td class="mono">${r.sid}</td>
+      <td class="mono">${r.date}</td>
+      <td>${r.file}</td>
+      <td class="mono">${fmtDur(r.dur)}</td>
+      <td class="ref-chk">
+        <input type="checkbox" title="참조측정으로 설정" ${isRef?'checked':''}
+          onclick="event.stopPropagation();toggleRef('${r.id}',this.checked)"
+          style="accent-color:#e65100">
+        ${isRef?'<span class="ref-badge">참조</span>':''}
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('chkAll').checked = rows.every(r => checkedRows.has(r.id));
+  updateBulkActions();
+}
+
+function toggleRow(id, e) {
+  if (e.target.tagName==='INPUT') return;
+  checkedRows.has(id) ? checkedRows.delete(id) : checkedRows.add(id);
+  renderTable();
+}
+function onRowCheck(id, checked) {
+  checked ? checkedRows.add(id) : checkedRows.delete(id);
+  updateBulkActions();
+  renderTable();
+}
+function toggleAll(chk) {
+  const fNick=colFilter(1),fSid=colFilter(2),fDate=colFilter(3),fFile=colFilter(4);
+  let rows = selectedDocId ? RESULTS.filter(r=>r.docId===selectedDocId) : [...RESULTS];
+  if (fNick) rows=rows.filter(r=>r.nick.toLowerCase().includes(fNick));
+  if (fSid)  rows=rows.filter(r=>r.sid.toLowerCase().includes(fSid));
+  if (fDate) rows=rows.filter(r=>r.date.includes(fDate));
+  if (fFile) rows=rows.filter(r=>r.file.toLowerCase().includes(fFile));
+  rows.forEach(r => chk.checked ? checkedRows.add(r.id) : checkedRows.delete(r.id));
+  renderTable();
+}
+function toggleRef(id, checked) {
+  if (checked) refRows.add(id);
+  else refRows.delete(id);
+  renderTable();
+}
+function updateBulkActions() {
+  document.getElementById('bulkActions').style.display = checkedRows.size > 0 ? 'flex' : 'none';
+}
+function doAnalyze() { alert(`선택된 ${checkedRows.size}건으로 분석 화면 이동`); }
+function doDelete()  {
+  if (!confirm(`선택된 ${checkedRows.size}건을 삭제하시겠습니까?`)) return;
+  RESULTS = RESULTS.filter(r => !checkedRows.has(r.id));
+  checkedRows.clear();
+  renderTable();
+}
+
+// ════════════════════════════════════════
+// 섹션 토글
+// ════════════════════════════════════════
+function toggleSec(bodyId, togId) {
+  const el = document.getElementById(bodyId);
+  const tog = document.getElementById(togId);
+  const hide = el.style.display !== 'none';
+  el.style.display = hide ? 'none' : '';
+  tog.classList.toggle('closed', hide);
+}
+
+// ════════════════════════════════════════
+// 초기화
+// ════════════════════════════════════════
+renderGroupTabs();
+renderCarousel();
+renderTable();
+</script>
+</body>
+</html>

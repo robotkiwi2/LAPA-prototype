@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>자유글 시선측정 — PDF 편집</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px; background: #1e1e1e; color: #d4d4d4;
+  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* ── 툴바 ── */
+.toolbar {
+  height: 40px; background: #2d2d2d; border-bottom: 1px solid #3a3a3a;
+  display: flex; align-items: center; padding: 0 12px; gap: 8px; flex-shrink: 0;
+}
+.toolbar-title { font-weight: 600; font-size: 13px; color: #ccc; margin-right: 8px; }
+.spacer { flex: 1; }
+.btn {
+  padding: 4px 10px; border-radius: 4px; border: 1px solid #555;
+  background: #3a3a3a; color: #ccc; cursor: pointer; font-size: 12px; transition: background 0.12s;
+}
+.btn:hover { background: #4a4a4a; }
+.btn.primary { background: #0e639c; border-color: #0e639c; color: #fff; }
+.btn.primary:hover { background: #1177bb; }
+.btn.active { background: #094771; border-color: #0e8fdd; color: #7ec8f5; }
+.btn-sm { padding: 3px 9px; font-size: 11px; }
+.btn-danger { color: #f88; border-color: #744; }
+.btn-danger:hover { background: #3a2020; }
+
+/* ── 메인 ── */
+.main { display: flex; flex: 1; overflow: hidden; }
+
+/* ── 좌측 패널 ── */
+.left-panel {
+  width: 240px; min-width: 180px; background: #252526;
+  border-right: 1px solid #3a3a3a; display: flex; flex-direction: column; flex-shrink: 0;
+}
+.tab-bar { display: flex; border-bottom: 1px solid #3a3a3a; flex-shrink: 0; }
+.tab {
+  flex: 1; padding: 7px 4px; text-align: center; font-size: 11px;
+  cursor: pointer; color: #888; border-bottom: 2px solid transparent; transition: color 0.1s;
+}
+.tab.active { color: #ccc; border-bottom-color: #0e8fdd; }
+.tab:hover:not(.active) { color: #aaa; }
+.panel-header {
+  padding: 6px 10px; font-size: 11px; font-weight: 600; color: #888;
+  text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid #3a3a3a;
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+.panel-header .icon-btn {
+  background: none; border: none; color: #888; cursor: pointer;
+  font-size: 12px; padding: 2px 5px; border-radius: 3px;
+}
+.panel-header .icon-btn:hover { color: #ccc; background: #3a3a3a; }
+.tree { flex: 1; overflow-y: auto; padding: 4px 0; }
+.tree-node {
+  display: flex; align-items: center; gap: 4px; padding: 3px 8px;
+  cursor: pointer; user-select: none; border-radius: 3px; margin: 1px 4px;
+  transition: background 0.1s; min-height: 26px;
+}
+.tree-node:hover { background: #2a2d2e; }
+.tree-node.selected { background: #094771; color: #fff; }
+.tree-node.selected .node-sub { color: #aad4f5; }
+.tree-node .toggle { width: 14px; text-align: center; font-size: 10px; color: #666; flex-shrink: 0; }
+.tree-node .node-icon { font-size: 12px; flex-shrink: 0; }
+.tree-node .node-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+.tree-node .node-sub { font-size: 10px; color: #666; flex-shrink: 0; }
+.aoi-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.tree-children { display: none; }
+.tree-children.open { display: block; }
+.indent-1 { padding-left: 16px; }
+.indent-2 { padding-left: 30px; }
+
+/* 프로퍼티 패널 */
+.property-panel { border-top: 1px solid #3a3a3a; overflow-y: auto; max-height: 46%; flex-shrink: 0; }
+.prop-section { padding: 10px 12px; }
+.prop-section + .prop-section { border-top: 1px solid #333; }
+.prop-title { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.prop-row { display: flex; align-items: center; margin-bottom: 6px; gap: 6px; }
+.prop-label { width: 72px; font-size: 12px; color: #999; flex-shrink: 0; }
+.prop-input {
+  flex: 1; background: #3c3c3c; border: 1px solid #555; border-radius: 3px;
+  color: #ccc; padding: 3px 6px; font-size: 12px; outline: none;
+}
+.prop-input:focus { border-color: #0e639c; }
+select.prop-input { cursor: pointer; }
+textarea.prop-input { resize: vertical; min-height: 52px; font-family: inherit; line-height: 1.5; }
+.prop-input[type="number"] { width: 60px; flex: none; }
+.prop-input[type="checkbox"] { width: 14px; height: 14px; flex: none; cursor: pointer; }
+.scale-row { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag {
+  padding: 2px 7px; border-radius: 10px; font-size: 11px;
+  background: #3a3a3a; border: 1px solid #555; color: #ccc;
+  display: flex; align-items: center; gap: 3px; cursor: pointer; user-select: none;
+}
+.tag.on { background: #1a3a5c; border-color: #0e639c; color: #7ec8f5; }
+.tag .tx { cursor: pointer; color: #888; font-size: 10px; }
+.tag .tx:hover { color: #f88; }
+.tag-add { padding: 2px 8px; border-radius: 10px; font-size: 11px; background: none; border: 1px dashed #555; color: #888; cursor: pointer; }
+.tag-add:hover { border-color: #888; color: #ccc; }
+.empty-prop { padding: 20px 12px; font-size: 12px; color: #555; text-align: center; }
+.prop-btn-row { display: flex; justify-content: flex-end; gap: 6px; margin-top: 4px; }
+
+/* ── PDF 영역 ── */
+.pdf-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #3c3c3c; }
+.pdf-toolbar {
+  height: 38px; background: #2d2d2d; border-bottom: 1px solid #3a3a3a;
+  display: flex; align-items: center; padding: 0 10px; gap: 6px; flex-shrink: 0;
+}
+.page-nav { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #aaa; }
+.page-nav input { width: 34px; text-align: center; background: #3c3c3c; border: 1px solid #555; border-radius: 3px; color: #ccc; padding: 2px 4px; font-size: 12px; }
+.divider { width: 1px; height: 18px; background: #444; margin: 0 2px; flex-shrink: 0; }
+.tool-hint { font-size: 11px; color: #7ec8f5; margin-left: 4px; }
+
+.pdf-canvas { flex: 1; display: flex; align-items: flex-start; justify-content: center; overflow: auto; padding: 20px; position: relative; }
+.pdf-page {
+  position: relative; background: #fff; width: 595px; height: 842px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5); border-radius: 2px; flex-shrink: 0;
+}
+.pdf-content {
+  position: absolute; inset: 0; padding: 40px 48px; color: #333;
+  display: flex; flex-direction: column; gap: 10px;
+  user-select: none; pointer-events: none;
+}
+.dummy-q { font-size: 11px; color: #555; }
+.dummy-body { background: #f4f4f4; border-left: 3px solid #ccc; padding: 10px 12px; font-size: 11px; color: #444; line-height: 1.75; border-radius: 2px; }
+.dummy-qtext { font-size: 12px; font-weight: 600; color: #222; margin-top: 4px; }
+.dummy-choice { font-size: 11px; color: #333; padding: 2px 0; }
+
+/* SVG AOI 레이어 */
+#aoiSvg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  overflow: visible;
+}
+
+/* ── 모달 ── */
+.modal-bg {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center;
+}
+.modal-bg.open { display: flex; }
+.modal { background: #2d2d2d; border: 1px solid #555; border-radius: 8px; padding: 20px 24px; width: 300px; display: flex; flex-direction: column; gap: 12px; }
+.modal h3 { font-size: 14px; color: #ccc; font-weight: 600; }
+.modal-row { display: flex; flex-direction: column; gap: 4px; }
+.modal-row label { font-size: 11px; color: #999; }
+.modal-row input, .modal-row select { background: #3c3c3c; border: 1px solid #555; border-radius: 4px; color: #ccc; padding: 5px 8px; font-size: 13px; outline: none; }
+.modal-row input:focus, .modal-row select:focus { border-color: #0e639c; }
+.modal-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+
+/* ── 페이지 이동/종료 플로팅 버튼 ── */
+.page-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
+.nav-circle {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(30,30,30,0.55); backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,0.18);
+  display: none; align-items: center; justify-content: center;
+  font-size: 24px; color: rgba(255,255,255,0.9); line-height: 1;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+.nav-circle.prev { left: 12px; }
+.nav-circle.next { right: 12px; }
+.nav-circle.visible { display: flex; }
+.end-btn-overlay {
+  position: absolute; right: 20px; bottom: 20px;
+  background: rgba(30,30,30,0.55); backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,0.22);
+  color: rgba(255,255,255,0.9); border-radius: 8px;
+  padding: 6px 18px; font-size: 12px; letter-spacing: 0.04em;
+  display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+.end-btn-overlay.visible { display: block; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="toolbar-title">📄 2025 PSAT 언어논리 5번</span>
+  <div class="spacer"></div>
+  <button class="btn">저장</button>
+  <button class="btn primary">미리보기</button>
+</div>
+
+<div class="main">
+  <div class="left-panel">
+    <div class="tab-bar">
+      <div class="tab active" id="tab-page" onclick="switchTab('page')">페이지 뷰</div>
+      <div class="tab" id="tab-group" onclick="switchTab('group')">그룹 뷰</div>
+    </div>
+
+    <div id="view-page" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="panel-header">문서 구조<button class="icon-btn" onclick="selectDocNode()">⚙</button></div>
+      <div class="tree" id="pageTree"></div>
+    </div>
+
+    <div id="view-group" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="panel-header">그룹<button class="icon-btn" onclick="openGroupModal()">＋ 그룹</button></div>
+      <div class="tree" id="groupTree"></div>
+    </div>
+
+    <div class="property-panel" id="propertyPanel">
+      <div class="empty-prop">노드를 선택하세요</div>
+    </div>
+  </div>
+
+  <div class="pdf-area">
+    <div class="pdf-toolbar">
+      <div class="page-nav">
+        <button class="btn btn-sm" onclick="changePage(-1)">◀</button>
+        <input type="number" id="pageInput" value="1" min="1" max="3" onchange="goToPage(+this.value)">
+        <span>/ 3</span>
+        <button class="btn btn-sm" onclick="changePage(1)">▶</button>
+      </div>
+      <div class="divider"></div>
+      <button class="btn btn-sm" id="tool-rect"    onclick="setTool('rect')">⬜ 사각형</button>
+      <button class="btn btn-sm" id="tool-ellipse" onclick="setTool('ellipse')">⭕ 타원</button>
+      <button class="btn btn-sm" id="tool-polygon" onclick="setTool('polygon')">⬡ 다각형</button>
+      <span class="tool-hint" id="toolHint"></span>
+      <div class="spacer"></div>
+      <label style="font-size:12px;color:#aaa;display:flex;align-items:center;gap:4px;cursor:pointer;">
+        <input type="checkbox" id="toggleAOI" checked onchange="renderAOIs()"> AOI 표시
+      </label>
+    </div>
+
+    <div class="pdf-canvas">
+      <div class="pdf-page" id="pdfPage">
+        <div class="pdf-content">
+          <div class="dummy-q">5. 다음 글의 내용과 부합하는 것은?</div>
+          <div class="dummy-body">
+            민주주의는 단순히 다수결 원칙만을 의미하지 않는다. 진정한 민주주의는 소수의 권리를 보호하고, 모든 시민이 자신의 의사를 자유롭게 표현할 수 있는 환경을 전제로 한다. 이를 위해서는 표현의 자유, 집회의 자유, 그리고 공정한 선거 절차가 반드시 보장되어야 한다.<br><br>
+            또한 민주주의는 법치주의와 불가분의 관계에 있다. 아무리 다수의 의사라 하더라도 법에 위배되는 결정은 민주주의의 이름으로 정당화될 수 없다. 이러한 점에서 헌법은 민주주의의 근본 원칙을 수호하는 최후의 보루이다.
+          </div>
+          <div class="dummy-qtext">문제: 위 글의 내용과 부합하는 것은?</div>
+          <div class="dummy-choice">① 다수결 원칙은 민주주의의 충분조건이다.</div>
+          <div class="dummy-choice">② 소수의 권리 보호는 민주주의의 필수 요건이다.</div>
+          <div class="dummy-choice">③ 법치주의는 민주주의와 별개의 원리이다.</div>
+          <div class="dummy-choice">④ 표현의 자유만으로 민주주의가 완성된다.</div>
+          <div class="dummy-choice">⑤ 헌법은 다수결의 결과를 항상 추인한다.</div>
+        </div>
+
+        <!-- SVG AOI 레이어 -->
+        <svg id="aoiSvg" xmlns="http://www.w3.org/2000/svg"
+          width="595" height="842" viewBox="0 0 595 842"
+          style="position:absolute;inset:0;width:100%;height:100%">
+          <!-- 드로잉 캐처 (도구 활성시 이벤트 수신) -->
+          <rect id="drawCatcher" x="0" y="0" width="595" height="842"
+            fill="transparent" style="pointer-events:none"
+            onmousedown="svgMouseDown(event)"
+            onmousemove="svgMouseMove(event)"
+            onmouseup="svgMouseUp(event)"
+            ondblclick="svgDblClick(event)"/>
+          <g id="aoiShapes"></g>
+          <g id="aoiPreview"></g>
+          <g id="aoiHandles"></g>
+        </svg>
+      </div>
+
+      <!-- 페이지 이동/종료 플로팅 버튼 (캔버스 영역 고정) -->
+      <div class="page-overlay">
+        <div class="nav-circle prev" id="navPrev">‹</div>
+        <div class="nav-circle next" id="navNext">›</div>
+        <div class="end-btn-overlay" id="navEnd">종료</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 그룹 추가 모달 -->
+<div class="modal-bg" id="groupModal">
+  <div class="modal">
+    <h3>그룹 추가</h3>
+    <div class="modal-row"><label>그룹 이름</label><input id="modalGroupName" placeholder="예: Q1, 문제1"></div>
+    <div class="modal-row">
+      <label>유형</label>
+      <select id="modalGroupType">
+        <option>5지선다</option><option>단답형</option><option>서술형</option>
+        <option>독해지문</option><option>기타</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeGroupModal()">취소</button>
+      <button class="btn primary" onclick="addGroup()">추가</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// 데이터
+// ════════════════════════════════════════
+const doc = { title: '2025 PSAT 언어논리 5번', scale: 100, scaleMode: 'original', totalTimeLimit: '', description: '' };
+
+const pages = [
+  { number:1, timeLimit:180, showNext:true,  showPrev:false, showEnd:false },
+  { number:2, timeLimit:'',  showNext:true,  showPrev:true,  showEnd:false },
+  { number:3, timeLimit:'',  showNext:false, showPrev:true,  showEnd:true  },
+];
+
+let groups = [
+  { id:'g1', name:'Q1', type:'5지선다', timeLimit:'', tags:[] },
+  { id:'g2', name:'Q2', type:'5지선다', timeLimit:'', tags:[] },
+];
+
+const TAG_GROUPS = [
+  { label:'영역 유형', tags:['문제','지문','도식','이미지','표','기타'] },
+  { label:'선택지 유형', tags:['선택지','정답선택지'] },
+];
+const GROUP_TAG_GROUPS = [
+  { label:'난이도', tags:['초급','중급','고급'] },
+  { label:'유형',   tags:['사실','이해','추론','비판'] },
+];
+const GROUP_TAG_COLORS = {
+  '초급':'#81c784', '중급':'#ffb74d', '고급':'#e57373',
+  '사실':'#4fc3f7', '이해':'#ce93d8', '추론':'#80cbc4', '비판':'#fff176',
+};
+const DEFAULT_TAGS = TAG_GROUPS.flatMap(g => g.tags);
+
+const TAG_COLORS = {
+  '문제':       '#81c784',
+  '지문':       '#4fc3f7',
+  '도식':       '#ce93d8',
+  '이미지':     '#80cbc4',
+  '표':         '#fff176',
+  '기타':       '#aaaaaa',
+  '선택지':     '#ffb74d',
+  '정답선택지': '#e57373',
+};
+const DEFAULT_AOI_COLOR = '#888888';
+
+function getTagColor(tags) {
+  for (const t of DEFAULT_TAGS) {
+    if (tags.includes(t) && TAG_COLORS[t]) return TAG_COLORS[t];
+  }
+  return DEFAULT_AOI_COLOR;
+}
+
+// AOI: rect/ellipse → {id,name,page,groupId,shape,color,tags,x,y,w,h}
+//      polygon      → {id,name,page,groupId,shape:'polygon',color,tags,points:[{x,y}]}
+let aois = [
+  { id:'a1', name:'지문',  page:1, groupId:'g1', shape:'rect',    color:'#4fc3f7', tags:['지문'],          x:40,  y:38,  w:515, h:178 },
+  { id:'a2', name:'문제',  page:1, groupId:'g1', shape:'rect',    color:'#81c784', tags:['문제'],          x:40,  y:222, w:515, h:30  },
+  { id:'a3', name:'선①',  page:1, groupId:'g1', shape:'rect',    color:'#ffb74d', tags:['선택지'],        x:40,  y:260, w:515, h:22  },
+  { id:'a4', name:'선②',  page:1, groupId:'g1', shape:'rect',    color:'#ffb74d', tags:['선택지'],        x:40,  y:284, w:515, h:22  },
+  { id:'a5', name:'선③',  page:1, groupId:'g1', shape:'rect',    color:'#e57373', tags:['정답선택지'],    x:40,  y:308, w:515, h:22  },
+  { id:'a6', name:'선④',  page:1, groupId:'g1', shape:'rect',    color:'#ffb74d', tags:['선택지'],        x:40,  y:332, w:515, h:22  },
+  { id:'a7', name:'선⑤',  page:1, groupId:'g1', shape:'rect',    color:'#ffb74d', tags:['선택지'],        x:40,  y:356, w:515, h:22  },
+];
+
+let currentPage  = 1;
+let selectedType = null;
+let selectedId   = null;
+let drawGroupId  = null; // 새 AOI를 귀속시킬 그룹
+let currentTab   = 'page';
+let activeTool   = null;
+let aoiCounter   = aois.length + 1;
+const SYMBOLS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').concat('abcdefghijklmnopqrstuvwxyz');
+function nextSymbol() {
+  const used = new Set(aois.map(a => a.symbol).filter(Boolean));
+  return SYMBOLS.find(s => !used.has(s)) || '';
+}
+let groupCounter = groups.length + 1;
+
+// 드로잉 상태
+let drawing = null;
+// rect/ellipse: { shape, sx, sy, ex, ey }
+// polygon:      { points:[{x,y}], cx, cy }  cx/cy = 현재 마우스 위치
+
+// 핸들 드래그 상태
+let handleDrag = null;
+// { aoiId, hIdx, origAoi:{...} }
+
+// AOI 이동 드래그
+let moveDrag = null;
+// { aoiId, startX, startY, origX, origY, origPoints }
+
+// ════════════════════════════════════════
+// 탭 / 트리
+// ════════════════════════════════════════
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-page').classList.toggle('active', tab === 'page');
+  document.getElementById('tab-group').classList.toggle('active', tab === 'group');
+  document.getElementById('view-page').style.display  = tab === 'page'  ? 'flex' : 'none';
+  document.getElementById('view-group').style.display = tab === 'group' ? 'flex' : 'none';
+  renderTrees();
+}
+
+function renderTrees() { renderPageTree(); renderGroupTree(); }
+
+function renderPageTree() {
+  let h = nodeH('doc', null, '📁', doc.title, '', selectedType==='doc');
+  h += `<div class="tree-children open">`;
+  pages.forEach(p => {
+    const n = aois.filter(a => a.page === p.number).length;
+    const isCur = currentPage === p.number;
+    h += nodeH('page', p.number, '📄', `${p.number}페이지`, `${n} AOI`,
+               selectedType==='page' && selectedId===p.number, 'indent-1', isCur?'▼':'▶', `pch${p.number}`);
+    h += `<div class="tree-children ${isCur?'open':''}" id="pch${p.number}">`;
+    aois.filter(a => a.page === p.number).forEach(a => { h += aoiNodeH(a, 'indent-2'); });
+    h += '</div>';
+  });
+  h += '</div>';
+  document.getElementById('pageTree').innerHTML = h;
+}
+
+function renderGroupTree() {
+  let h = '';
+  if (!groups.length) { h = '<div class="empty-prop">그룹 없음</div>'; }
+  groups.forEach(g => {
+    const n = aois.filter(a => a.groupId === g.id).length;
+    h += nodeH('group', g.id, '🗂', g.name, `${g.type}·${n}`, selectedType==='group' && selectedId===g.id, '', '▼', `gch${g.id}`);
+    // 드롭 대상: 그룹 자식 컨테이너
+    const groupAois = aois.filter(a => a.groupId === g.id);
+    const emptyStyle = groupAois.length === 0 ? 'min-height:28px;' : '';
+    h += `<div class="tree-children open" id="gch${g.id}"
+      style="${emptyStyle}"
+      ondragover="event.preventDefault()"
+      ondragenter="onGroupDragEnter(event,'${g.id}')"
+      ondragleave="onGroupDragLeave(event,'${g.id}')"
+      ondrop="dropAoiToGroup(event,'${g.id}')">`;
+    if (groupAois.length === 0) {
+      h += `<div style="font-size:10px;color:#555;padding:6px 8px 6px 28px;pointer-events:none">비어 있음</div>`;
+    }
+    groupAois.forEach(a => { h += aoiNodeH(a, 'indent-1', true); });
+    h += '</div>';
+  });
+  document.getElementById('groupTree').innerHTML = h;
+}
+
+let dragAoiId = null;
+const _dragEnterCount = {};
+
+function startAoiDrag(e, id) {
+  dragAoiId = id;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', id);
+  e.stopPropagation();
+}
+function onGroupDragEnter(e, gId) {
+  e.preventDefault();
+  _dragEnterCount[gId] = (_dragEnterCount[gId] || 0) + 1;
+  e.currentTarget.style.background = '#1a3a5c';
+}
+function onGroupDragLeave(e, gId) {
+  _dragEnterCount[gId] = (_dragEnterCount[gId] || 1) - 1;
+  if (_dragEnterCount[gId] === 0) e.currentTarget.style.background = '';
+}
+function dropAoiToGroup(e, gId) {
+  e.preventDefault();
+  e.stopPropagation();
+  _dragEnterCount[gId] = 0;
+  e.currentTarget.style.background = '';
+  const id = e.dataTransfer.getData('text/plain') || dragAoiId;
+  dragAoiId = null;
+  if (!id) return;
+  const a = aois.find(x => x.id === id);
+  if (a && a.groupId !== gId) { a.groupId = gId; a.color = getTagColor(a.tags); renderTrees(); renderAOIs(); }
+}
+
+function nodeH(type, id, icon, label, sub, sel, indent='', tog='', childId='') {
+  const s = sel ? 'selected' : '';
+  const togHtml = childId
+    ? `<span class="toggle" onclick="toggleTree(event,'${childId}',this)">${tog}</span>`
+    : `<span class="toggle"></span>`;
+  const click = type==='doc'   ? `selectDocNode()`
+    : type==='page'  ? `selectPageNode(${id})`
+    : type==='group' ? `selectGroupNode('${id}')`
+    : '';
+  return `<div class="tree-node ${indent} ${s}" onclick="${click}">
+    ${togHtml}<span class="node-icon">${icon}</span>
+    <span class="node-label">${label}</span>
+    ${sub ? `<span class="node-sub">${sub}</span>` : ''}
+  </div>`;
+}
+
+function aoiNodeH(a, indent, draggable=false) {
+  const s = selectedType==='aoi' && selectedId===a.id ? 'selected' : '';
+  const dragAttrs = draggable ? `draggable="true" ondragstart="startAoiDrag(event,'${a.id}')" style="cursor:grab"` : '';
+  return `<div class="tree-node ${indent} ${s}" onclick="selectAoiNode('${a.id}')" ${dragAttrs}>
+    <span class="toggle"></span>
+    <span class="aoi-dot" style="background:${a.color}"></span>
+    <span class="node-label">${a.name}</span>
+    <span class="node-sub">p.${a.page}</span>
+  </div>`;
+}
+
+function toggleTree(e, id, btn) {
+  e.stopPropagation();
+  const el = document.getElementById(id);
+  if (!el) return;
+  btn.textContent = el.classList.toggle('open') ? '▼' : '▶';
+}
+
+// ════════════════════════════════════════
+// 노드 선택
+// ════════════════════════════════════════
+function selectDocNode()     { selectedType='doc'; selectedId=null; refresh(); }
+function selectPageNode(num) { selectedType='page'; selectedId=num; goToPage(num); refresh(); }
+function selectGroupNode(id) {
+  selectedType='group'; selectedId=id;
+  drawGroupId = id;
+  const first = aois.find(a => a.groupId===id);
+  if (first) goToPage(first.page);
+  else refresh();
+  renderProp();
+}
+function selectAoiNode(id) {
+  selectedType='aoi'; selectedId=id;
+  const a = aois.find(x => x.id===id);
+  if (a) goToPage(a.page);
+  else refresh();
+  renderProp();
+}
+function deselectAll() { selectedType=null; selectedId=null; refresh(); }
+
+function refresh() { renderTrees(); renderAOIs(); renderProp(); }
+
+// ════════════════════════════════════════
+// 페이지 이동
+// ════════════════════════════════════════
+function goToPage(n) {
+  currentPage = Math.max(1, Math.min(pages.length, +n));
+  document.getElementById('pageInput').value = currentPage;
+  renderTrees(); renderAOIs(); renderPageOverlay();
+}
+function changePage(d) { goToPage(currentPage + d); }
+
+// ════════════════════════════════════════
+// 도구
+// ════════════════════════════════════════
+const HINTS = {
+  rect:    '드래그하여 사각형 AOI 생성',
+  ellipse: '드래그하여 타원 AOI 생성',
+  polygon: '클릭으로 꼭짓점 추가 · 더블클릭으로 완성',
+};
+
+function setTool(t) {
+  activeTool = t;
+  drawing = null;
+  renderPreview();
+  ['rect','ellipse','polygon'].forEach(x => {
+    const el = document.getElementById('tool-'+x);
+    if (el) el.classList.toggle('active', x === t);
+  });
+  document.getElementById('toolHint').textContent = t ? HINTS[t] : '';
+  // drawCatcher 활성화 여부
+  const catcher = document.getElementById('drawCatcher');
+  catcher.style.pointerEvents = t ? 'all' : 'none';
+  document.getElementById('pdfPage').style.cursor = t ? 'crosshair' : '';
+}
+
+// ════════════════════════════════════════
+// SVG 이벤트 — 그리기
+// ════════════════════════════════════════
+function svgPt(e) {
+  const svg = document.getElementById('aoiSvg');
+  const r = svg.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left) / r.width  * 595,
+    y: (e.clientY - r.top)  / r.height * 842,
+  };
+}
+function svgScale() {
+  const r = document.getElementById('aoiSvg').getBoundingClientRect();
+  return r.width / 595; // pixels per viewBox unit
+}
+
+function svgMouseDown(e) {
+  if (!activeTool) return;
+  e.preventDefault();
+  const p = svgPt(e);
+  if (activeTool === 'polygon') {
+    if (!drawing) drawing = { shape:'polygon', points:[], cx:p.x, cy:p.y };
+    drawing.points.push({ x:p.x, y:p.y });
+    renderPreview();
+  } else {
+    drawing = { shape:activeTool, sx:p.x, sy:p.y, ex:p.x, ey:p.y };
+  }
+}
+
+function svgMouseMove(e) {
+  if (!activeTool) return;
+  const p = svgPt(e);
+  if (activeTool === 'polygon' && drawing) {
+    drawing.cx = p.x; drawing.cy = p.y;
+    renderPreview();
+  } else if (drawing) {
+    drawing.ex = p.x; drawing.ey = p.y;
+    renderPreview();
+  }
+}
+
+function svgMouseUp(e) {
+  if (!activeTool || !drawing) return;
+  if (activeTool === 'polygon') return; // polygon은 dblclick으로 완성
+  e.preventDefault();
+  const p = svgPt(e);
+  drawing.ex = p.x; drawing.ey = p.y;
+  const minW = 8, minH = 8;
+  if (Math.abs(drawing.ex - drawing.sx) < minW || Math.abs(drawing.ey - drawing.sy) < minH) {
+    drawing = null; renderPreview(); return;
+  }
+  finishRectEllipse();
+}
+
+function svgDblClick(e) {
+  if (activeTool !== 'polygon' || !drawing || drawing.points.length < 3) return;
+  e.preventDefault();
+  drawing.points.pop(); // 마지막 클릭 포인트 (dblclick은 click 2번) 제거
+  finishPolygon();
+}
+
+function activeGroupId() {
+  if (drawGroupId && groups.find(g => g.id === drawGroupId)) return drawGroupId;
+  if (selectedType === 'aoi') {
+    const a = aois.find(x => x.id === selectedId);
+    if (a && a.groupId) return a.groupId;
+  }
+  return groups.length ? groups[0].id : null;
+}
+
+function finishRectEllipse() {
+  const { shape, sx, sy, ex, ey } = drawing;
+  const x = Math.min(sx, ex), y = Math.min(sy, ey);
+  const w = Math.abs(ex - sx), h = Math.abs(ey - sy);
+  const id = 'a' + aoiCounter++;
+  const gId = activeGroupId();
+  aois.push({ id, name:`AOI ${aoiCounter-1}`, page:currentPage, groupId:gId, shape, color:groupColor(gId), tags:[], symbol:nextSymbol(), x, y, w, h });
+  drawing = null;
+  renderPreview();
+  setTool(null);
+  selectAoiNode(id);
+}
+
+function finishPolygon() {
+  const pts = drawing.points;
+  if (pts.length < 3) { drawing = null; renderPreview(); return; }
+  const id = 'a' + aoiCounter++;
+  const gId = activeGroupId();
+  aois.push({ id, name:`AOI ${aoiCounter-1}`, page:currentPage, groupId:gId, shape:'polygon', color:groupColor(gId), tags:[], symbol:nextSymbol(), points:pts });
+  drawing = null;
+  renderPreview();
+  setTool(null);
+  selectAoiNode(id);
+}
+
+// ════════════════════════════════════════
+// SVG AOI 렌더
+// ════════════════════════════════════════
+function renderAOIs() {
+  const show = document.getElementById('toggleAOI').checked;
+  const shapesG  = document.getElementById('aoiShapes');
+  const handlesG = document.getElementById('aoiHandles');
+  shapesG.innerHTML = '';
+  handlesG.innerHTML = '';
+  if (!show) return;
+
+  const pageAois = aois.filter(a => a.page === currentPage);
+
+  pageAois.forEach(a => {
+    const isSel     = selectedType==='aoi'   && selectedId===a.id;
+    const isGrpSel  = selectedType==='group' && selectedId===a.groupId;
+    const dimmed    = selectedType==='group' && !isGrpSel;
+    const opacity   = dimmed ? 0.2 : 1;
+    const sw        = isSel ? 3 : 2;
+
+    let shapeEl;
+    if (a.shape === 'rect') {
+      shapeEl = svgEl('rect', { x:a.x, y:a.y, width:a.w, height:a.h,
+        fill:`${a.color}18`, stroke:a.color, 'stroke-width':sw,
+        opacity, style:'cursor:move' });
+    } else if (a.shape === 'ellipse') {
+      shapeEl = svgEl('ellipse', { cx:a.x+a.w/2, cy:a.y+a.h/2, rx:a.w/2, ry:a.h/2,
+        fill:`${a.color}18`, stroke:a.color, 'stroke-width':sw,
+        opacity, style:'cursor:move' });
+    } else {
+      const pts = a.points.map(p => `${p.x},${p.y}`).join(' ');
+      shapeEl = svgEl('polygon', { points:pts,
+        fill:`${a.color}18`, stroke:a.color, 'stroke-width':sw,
+        opacity, style:'cursor:move' });
+    }
+
+    shapeEl.addEventListener('mousedown', ev => onShapeMouseDown(ev, a.id));
+    shapesG.appendChild(shapeEl);
+
+    // 레이블
+    let lx, ly;
+    if (a.shape === 'polygon') {
+      lx = a.points.reduce((s,p) => s+p.x, 0) / a.points.length;
+      ly = a.points.reduce((s,p) => s+p.y, 0) / a.points.length;
+    } else {
+      lx = a.x + a.w / 2;
+      ly = a.y + a.h / 2;
+    }
+    const lbl = svgEl('text', { x:lx, y:ly, fill:a.color,
+      'font-size':9, 'font-weight':'bold', 'text-anchor':'middle',
+      'dominant-baseline':'middle', 'pointer-events':'none', opacity });
+    const grp = groups.find(g => g.id === a.groupId);
+    const sym = a.symbol ? `(${a.symbol})` : '';
+    const prefix = grp ? `${grp.name}:` : '';
+    lbl.textContent = `${prefix}${a.name}${sym}`;
+    shapesG.appendChild(lbl);
+
+    // 핸들 (선택된 AOI만)
+    if (isSel) renderHandles(a, handlesG);
+  });
+}
+
+function renderHandles(a, g) {
+  if (a.shape === 'polygon') {
+    a.points.forEach((p, i) => {
+      const h = svgEl('circle', { cx:p.x, cy:p.y, r:5,
+        fill:'#fff', stroke:'#555', 'stroke-width':1.5, style:'cursor:move' });
+      h.addEventListener('mousedown', ev => onHandleMouseDown(ev, a.id, i));
+      g.appendChild(h);
+    });
+  } else {
+    // 8핸들: 0=TL 1=TC 2=TR 3=ML 4=MR 5=BL 6=BC 7=BR
+    handlePositions(a).forEach((pt, i) => {
+      const cursors = ['nwse-resize','ns-resize','nesw-resize','ew-resize','ew-resize','nesw-resize','ns-resize','nwse-resize'];
+      const h = svgEl('rect', { x:pt.x-4, y:pt.y-4, width:8, height:8,
+        fill:'#fff', stroke:'#555', 'stroke-width':1.5, rx:1, style:`cursor:${cursors[i]}` });
+      h.addEventListener('mousedown', ev => onHandleMouseDown(ev, a.id, i));
+      g.appendChild(h);
+    });
+  }
+}
+
+function handlePositions(a) {
+  const { x, y, w, h } = a;
+  return [
+    {x, y}, {x:x+w/2, y}, {x:x+w, y},
+    {x, y:y+h/2},         {x:x+w, y:y+h/2},
+    {x, y:y+h}, {x:x+w/2, y:y+h}, {x:x+w, y:y+h},
+  ];
+}
+
+// 프리뷰 렌더
+function renderPreview() {
+  const g = document.getElementById('aoiPreview');
+  g.innerHTML = '';
+  if (!drawing) return;
+  const DRAW_COLOR = '#0e8fdd';
+  const DRAW_FILL  = 'rgba(14,143,221,0.08)';
+  if (drawing.shape === 'polygon') {
+    if (drawing.points.length >= 1) {
+      const all = [...drawing.points, { x:drawing.cx, y:drawing.cy }];
+      const pts = all.map(p => `${p.x},${p.y}`).join(' ');
+      const poly = svgEl('polyline', { points:pts,
+        fill:DRAW_FILL, stroke:DRAW_COLOR, 'stroke-width':1.5,
+        'stroke-dasharray':'5,3', 'pointer-events':'none' });
+      g.appendChild(poly);
+      drawing.points.forEach(p => {
+        const c = svgEl('circle', { cx:p.x, cy:p.y, r:4, fill:DRAW_COLOR, 'pointer-events':'none' });
+        g.appendChild(c);
+      });
+    }
+  } else {
+    const { sx, sy, ex, ey } = drawing;
+    const x=Math.min(sx,ex), y=Math.min(sy,ey), w=Math.abs(ex-sx), h=Math.abs(ey-sy);
+    let el;
+    if (drawing.shape === 'rect') {
+      el = svgEl('rect', { x, y, width:w, height:h, fill:DRAW_FILL, stroke:DRAW_COLOR, 'stroke-width':1.5, 'stroke-dasharray':'5,3', 'pointer-events':'none' });
+    } else {
+      el = svgEl('ellipse', { cx:x+w/2, cy:y+h/2, rx:w/2, ry:h/2, fill:DRAW_FILL, stroke:DRAW_COLOR, 'stroke-width':1.5, 'stroke-dasharray':'5,3', 'pointer-events':'none' });
+    }
+    g.appendChild(el);
+  }
+}
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+  return el;
+}
+
+// ════════════════════════════════════════
+// AOI 이동 / 핸들 드래그
+// ════════════════════════════════════════
+function onShapeMouseDown(e, id) {
+  if (activeTool) return;
+  e.stopPropagation(); e.preventDefault();
+  selectAoiNode(id);
+  const a = aois.find(x => x.id===id);
+  if (!a) return;
+  moveDrag = {
+    aoiId: id, startX: e.clientX, startY: e.clientY,
+    origX: a.x, origY: a.y,
+    origPoints: a.points ? a.points.map(p => ({...p})) : null,
+  };
+}
+
+function onHandleMouseDown(e, id, hIdx) {
+  e.stopPropagation(); e.preventDefault();
+  const a = aois.find(x => x.id===id);
+  if (!a) return;
+  handleDrag = { aoiId:id, hIdx, origAoi: { x:a.x, y:a.y, w:a.w, h:a.h, points:a.points ? a.points.map(p=>({...p})) : null }, startX:e.clientX, startY:e.clientY };
+}
+
+document.addEventListener('mousemove', e => {
+  if (moveDrag) {
+    const s = svgScale();
+    const dx = (e.clientX - moveDrag.startX) / s;
+    const dy = (e.clientY - moveDrag.startY) / s;
+    const a = aois.find(x => x.id===moveDrag.aoiId);
+    if (!a) return;
+    if (a.shape === 'polygon') {
+      a.points = moveDrag.origPoints.map(p => ({ x:p.x+dx, y:p.y+dy }));
+    } else {
+      a.x = moveDrag.origX + dx;
+      a.y = moveDrag.origY + dy;
+    }
+    renderAOIs();
+  }
+  if (handleDrag) {
+    const s = svgScale();
+    const dx = (e.clientX - handleDrag.startX) / s;
+    const dy = (e.clientY - handleDrag.startY) / s;
+    const a = aois.find(x => x.id===handleDrag.aoiId);
+    if (!a) return;
+    if (a.shape === 'polygon') {
+      const orig = handleDrag.origAoi.points[handleDrag.hIdx];
+      a.points[handleDrag.hIdx] = { x:orig.x+dx, y:orig.y+dy };
+    } else {
+      applyRectHandle(a, handleDrag.hIdx, handleDrag.origAoi, dx, dy);
+    }
+    renderAOIs();
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  moveDrag = null;
+  handleDrag = null;
+});
+
+// rect/ellipse 핸들 적용
+// 핸들 인덱스: 0=TL 1=TC 2=TR 3=ML 4=MR 5=BL 6=BC 7=BR
+function applyRectHandle(a, hIdx, orig, dx, dy) {
+  const minSz = 10;
+  let { x, y, w, h } = orig;
+  switch(hIdx) {
+    case 0: x+=dx; y+=dy; w-=dx; h-=dy; break; // TL
+    case 1: y+=dy; h-=dy; break;                // TC
+    case 2: y+=dy; w+=dx; h-=dy; break;         // TR
+    case 3: x+=dx; w-=dx; break;                // ML
+    case 4: w+=dx; break;                        // MR
+    case 5: x+=dx; w-=dx; h+=dy; break;         // BL
+    case 6: h+=dy; break;                        // BC
+    case 7: w+=dx; h+=dy; break;                 // BR
+  }
+  if (w < minSz) { if ([0,3,5].includes(hIdx)) x = orig.x+orig.w-minSz; w = minSz; }
+  if (h < minSz) { if ([0,1,2].includes(hIdx)) y = orig.y+orig.h-minSz; h = minSz; }
+  a.x=x; a.y=y; a.w=w; a.h=h;
+  if (a.shape==='ellipse') {} // ellipse도 x,y,w,h 사용
+}
+
+// ════════════════════════════════════════
+// 그룹 색
+// ════════════════════════════════════════
+function groupColor(gId) {
+  const palette = ['#4fc3f7','#81c784','#ffb74d','#e57373','#ce93d8','#80cbc4','#fff176','#ff8a65'];
+  const i = groups.findIndex(g => g.id===gId);
+  return palette[Math.max(0,i) % palette.length];
+}
+
+// ════════════════════════════════════════
+// 프로퍼티 패널
+// ════════════════════════════════════════
+function renderProp() {
+  const panel = document.getElementById('propertyPanel');
+  if (!selectedType) { panel.innerHTML = '<div class="empty-prop">노드를 선택하세요</div>'; return; }
+
+  if (selectedType === 'doc') {
+    panel.innerHTML = `
+      <div class="prop-section">
+        <div class="prop-title">문서</div>
+        <div class="prop-row"><span class="prop-label">제목</span><input class="prop-input" value="${esc(doc.title)}" oninput="doc.title=this.value"></div>
+        <div class="prop-row">
+          <span class="prop-label">배율 모드</span>
+          <select class="prop-input" onchange="setScaleMode(this.value)">
+            <option value="original"   ${doc.scaleMode==='original'  ?'selected':''}>원본 크기</option>
+            <option value="fit-height" ${doc.scaleMode==='fit-height'?'selected':''}>상하 맞춤</option>
+            <option value="fit-width"  ${doc.scaleMode==='fit-width' ?'selected':''}>좌우 맞춤</option>
+            <option value="manual"     ${doc.scaleMode==='manual'    ?'selected':''}>수동 설정</option>
+          </select>
+        </div>
+        <div class="prop-row" style="align-items:center;gap:4px;padding-left:78px">
+          <input class="prop-input" type="number" value="${doc.scale}" min="20" max="300"
+            style="width:60px;text-align:center"
+            oninput="setScaleValue(+this.value)">
+          <span style="font-size:11px;color:#888">%</span>
+        </div>
+        <div class="prop-row"><span class="prop-label">전체 제한</span><input class="prop-input" type="number" value="${doc.totalTimeLimit}" placeholder="초" style="width:60px" oninput="doc.totalTimeLimit=this.value"><span style="font-size:11px;color:#888">초</span></div>
+      </div>
+      <div class="prop-section">
+        <div class="prop-title">설명</div>
+        <textarea class="prop-input" oninput="doc.description=this.value">${esc(doc.description)}</textarea>
+      </div>
+      <div class="prop-section">
+        <button class="btn" style="width:100%" onclick="openGroupModal()">🤖 AI AOI 자동생성 (전체 페이지)</button>
+      </div>`;
+  }
+
+  else if (selectedType === 'page') {
+    const p = pages.find(x => x.number===selectedId);
+    if (!p) return;
+    const pi = p.number - 1;
+    panel.innerHTML = `
+      <div class="prop-section">
+        <div class="prop-title">${p.number}페이지</div>
+        <div class="prop-row"><span class="prop-label">제한 시간</span><input class="prop-input" type="number" value="${p.timeLimit||''}" placeholder="초" style="width:60px" oninput="pages[${pi}].timeLimit=+this.value"><span style="font-size:11px;color:#888">초</span></div>
+      </div>
+      <div class="prop-section">
+        <div class="prop-title">버튼 표시</div>
+        ${checkRow('이전 페이지', p.showPrev, `pages[${pi}].showPrev=this.checked;renderPageOverlay()`)}
+        ${checkRow('다음 페이지', p.showNext, `pages[${pi}].showNext=this.checked;renderPageOverlay()`)}
+        ${checkRow('종료 버튼',   p.showEnd,  `pages[${pi}].showEnd=this.checked;renderPageOverlay()`)}
+      </div>
+      <div class="prop-section">
+        <button class="btn" style="width:100%" onclick="openGroupModal()">🤖 AI AOI 자동생성 (${p.number}페이지)</button>
+      </div>`;
+  }
+
+  else if (selectedType === 'group') {
+    const g = groups.find(x => x.id===selectedId);
+    if (!g) return;
+    if (!g.tags) g.tags = [];
+    const groupTagsHtml = GROUP_TAG_GROUPS.map(grp =>
+      `<div style="margin-bottom:8px">
+        <div style="font-size:10px;color:#666;margin-bottom:4px">${grp.label}</div>
+        <div class="tag-list">${grp.tags.map(t => {
+          const c = GROUP_TAG_COLORS[t] || '#888';
+          const on = g.tags.includes(t);
+          const style = on
+            ? `background:${c}28;border-color:${c};color:${c}`
+            : `border-color:${c}66;color:${c}88`;
+          return `<span class="tag" style="${style}" onclick="toggleGroupTag('${g.id}','${t}')">${t}</span>`;
+        }).join('')}</div>
+      </div>`
+    ).join('');
+    panel.innerHTML = `
+      <div class="prop-section">
+        <div class="prop-title">그룹</div>
+        <div class="prop-row"><span class="prop-label">이름</span><input class="prop-input" value="${esc(g.name)}" oninput="updateGroup('${g.id}','name',this.value)"></div>
+        <div class="prop-row">
+          <span class="prop-label">유형</span>
+          <select class="prop-input" onchange="updateGroup('${g.id}','type',this.value)">
+            ${['5지선다','단답형','서술형','독해지문','기타'].map(t=>`<option ${g.type===t?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="prop-row"><span class="prop-label">제한 시간</span><input class="prop-input" type="number" value="${g.timeLimit||''}" placeholder="초" style="width:60px" oninput="updateGroup('${g.id}','timeLimit',this.value)"><span style="font-size:11px;color:#888">초</span></div>
+      </div>
+      <div class="prop-section">
+        <div class="prop-title">태그</div>
+        ${groupTagsHtml}
+      </div>
+      <div class="prop-section">
+        <div class="prop-btn-row"><button class="btn btn-sm btn-danger" onclick="deleteGroup('${g.id}')">그룹 삭제</button></div>
+      </div>`;
+  }
+
+  else if (selectedType === 'aoi') {
+    const a = aois.find(x => x.id===selectedId);
+    if (!a) return;
+    const typeHtml = `<div class="tag-list">${DEFAULT_TAGS.map(t => {
+      const c = TAG_COLORS[t] || '#888';
+      const on = a.tags.includes(t);
+      const style = on
+        ? `background:${c}28;border-color:${c};color:${c}`
+        : `border-color:${c}66;color:${c}88`;
+      return `<span class="tag" style="${style}" onclick="toggleTag('${a.id}','${t}')">${t}</span>`;
+    }).join('')}</div>`;
+
+    panel.innerHTML = `
+      <div class="prop-section">
+        <div class="prop-title">AOI <span style="font-size:10px;color:#666;text-transform:none;letter-spacing:0">${a.shape}</span></div>
+        <div class="prop-row"><span class="prop-label">이름</span><input class="prop-input" value="${esc(a.name)}" oninput="updateAoi('${a.id}','name',this.value)"></div>
+        <div class="prop-row">
+          <span class="prop-label">기호</span>
+          <select class="prop-input" style="width:70px" onchange="updateAoi('${a.id}','symbol',this.value)">
+            <option value="">없음</option>
+            ${SYMBOLS.map(s => `<option value="${s}" ${a.symbol===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="prop-row">
+          <span class="prop-label">그룹</span>
+          <select class="prop-input" onchange="changeAoiGroup('${a.id}',this.value)">
+            ${groups.map(g=>`<option value="${g.id}" ${a.groupId===g.id?'selected':''}>${g.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="prop-row">
+          <span class="prop-label">색상</span>
+          <span style="display:inline-flex;align-items:center;gap:6px">
+            <span style="width:14px;height:14px;border-radius:3px;background:${a.color};display:inline-block;border:1px solid #555"></span>
+            <span style="font-size:11px;color:#888">태그에 따라 자동</span>
+          </span>
+        </div>
+      </div>
+      <div class="prop-section">
+        <div class="prop-title">유형</div>
+        ${typeHtml}
+      </div>
+      <div class="prop-section">
+        <div class="prop-btn-row">
+          <button class="btn btn-sm" onclick="duplicateAoi('${a.id}')">복사</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteAoi('${a.id}')">삭제</button>
+        </div>
+      </div>`;
+  }
+}
+
+function renderPageOverlay() {
+  const p = pages.find(x => x.number === currentPage);
+  const prev = p && p.showPrev;
+  const next = p && p.showNext;
+  const end  = p && p.showEnd;
+  document.getElementById('navPrev').classList.toggle('visible', !!prev);
+  document.getElementById('navNext').classList.toggle('visible', !!next);
+  document.getElementById('navEnd').classList.toggle('visible',  !!end);
+}
+
+function checkRow(label, checked, onchange) {
+  return `<div class="prop-row"><span class="prop-label">${label}</span><input type="checkbox" class="prop-input" ${checked?'checked':''} onchange="${onchange}"></div>`;
+}
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+// ════════════════════════════════════════
+// 데이터 업데이트
+// ════════════════════════════════════════
+const PDF_BASE_W = 595;
+const PDF_BASE_H = 842;
+
+function applyScale() {
+  const canvas = document.getElementById('pdfPage').parentElement;
+  let s = doc.scale / 100;
+  if (doc.scaleMode === 'fit-height') {
+    s = (canvas.clientHeight - 40) / PDF_BASE_H;
+  } else if (doc.scaleMode === 'fit-width') {
+    s = (canvas.clientWidth - 40) / PDF_BASE_W;
+  }
+  doc.scale = Math.round(s * 100);
+  const page = document.getElementById('pdfPage');
+  page.style.width  = (PDF_BASE_W * s) + 'px';
+  page.style.height = (PDF_BASE_H * s) + 'px';
+  // SVG도 같은 크기
+  const svg = document.getElementById('aoiSvg');
+  if (svg) {
+    svg.setAttribute('width',  PDF_BASE_W * s);
+    svg.setAttribute('height', PDF_BASE_H * s);
+    svg.setAttribute('viewBox', `0 0 ${PDF_BASE_W} ${PDF_BASE_H}`);
+  }
+}
+
+function setScaleMode(mode) {
+  doc.scaleMode = mode;
+  applyScale();
+  renderProp();
+}
+
+function setScaleValue(v) {
+  doc.scale = Math.max(20, Math.min(300, v || 100));
+  doc.scaleMode = 'manual';
+  applyScale();
+  renderProp();
+}
+
+function updateGroup(id, key, val) {
+  const g = groups.find(x => x.id===id);
+  if (g) { g[key] = val; renderTrees(); }
+}
+function deleteGroup(id) {
+  if (!confirm('그룹을 삭제합니다. 소속 AOI의 그룹이 해제됩니다.')) return;
+  groups = groups.filter(g => g.id!==id);
+  aois.forEach(a => { if (a.groupId===id) a.groupId=null; });
+  selectedType=null; selectedId=null; refresh();
+}
+
+function updateAoi(id, key, val) {
+  const a = aois.find(x => x.id===id);
+  if (a) { a[key]=val; renderTrees(); renderAOIs(); }
+}
+function changeAoiGroup(id, gId) {
+  const a = aois.find(x => x.id===id);
+  if (a) { a.groupId=gId; a.color=groupColor(gId); renderTrees(); renderAOIs(); renderProp(); }
+}
+function toggleGroupTag(id, tag) {
+  const g = groups.find(x => x.id===id);
+  if (!g) return;
+  if (!g.tags) g.tags = [];
+  const grp = GROUP_TAG_GROUPS.find(gr => gr.tags.includes(tag));
+  if (g.tags.includes(tag)) {
+    g.tags = g.tags.filter(t => t !== tag);
+  } else {
+    if (grp) g.tags = g.tags.filter(t => !grp.tags.includes(t));
+    g.tags.push(tag);
+  }
+  renderProp();
+}
+
+function toggleTag(id, tag) {
+  const a = aois.find(x => x.id===id);
+  if (!a) return;
+  if (a.tags.includes(tag)) {
+    a.tags = [];
+  } else {
+    a.tags = [tag]; // 전체 단일 선택
+  }
+  a.color = getTagColor(a.tags);
+  renderAOIs();
+  renderProp();
+}
+function duplicateAoi(id) {
+  const a = aois.find(x => x.id===id); if (!a) return;
+  const na = JSON.parse(JSON.stringify(a));
+  na.id = 'a' + aoiCounter++;
+  na.name = a.name + '_복사';
+  if (na.points) na.points = na.points.map(p => ({ x:p.x+12, y:p.y+12 }));
+  else { na.x+=12; na.y+=12; }
+  aois.push(na);
+  selectAoiNode(na.id);
+}
+function deleteAoi(id) {
+  aois = aois.filter(a => a.id!==id);
+  selectedType=null; selectedId=null; refresh();
+}
+
+// ════════════════════════════════════════
+// 그룹 모달
+// ════════════════════════════════════════
+function openGroupModal() {
+  document.getElementById('groupModal').classList.add('open');
+  setTimeout(() => document.getElementById('modalGroupName').focus(), 50);
+}
+function closeGroupModal() { document.getElementById('groupModal').classList.remove('open'); }
+function addGroup() {
+  const name = document.getElementById('modalGroupName').value.trim();
+  if (!name) { alert('그룹 이름을 입력하세요.'); return; }
+  const type = document.getElementById('modalGroupType').value;
+  const id = 'g' + (++groupCounter);
+  groups.push({ id, name, type, timeLimit:'', tags:[] });
+  closeGroupModal();
+  switchTab('group');
+  selectGroupNode(id);
+}
+document.getElementById('groupModal').addEventListener('click', e => { if (e.target.id==='groupModal') closeGroupModal(); });
+
+// 키보드 단축키
+document.addEventListener('keydown', e => {
+  // 입력 필드 포커스 중엔 무시
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  if (e.key === 'Escape') {
+    if (activeTool) { drawing=null; renderPreview(); setTool(null); }
+    else deselectAll();
+  }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedType === 'aoi' && selectedId) {
+    e.preventDefault();
+    deleteAoi(selectedId);
+  }
+});
+
+// ════════════════════════════════════════
+// 초기화
+// ════════════════════════════════════════
+setTool(null);
+applyScale();
+selectDocNode();
+renderPageOverlay();
+</script>
+</body>
+</html>

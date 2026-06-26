@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>시선 분석 결과</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;font-size:13px;background:#1e1e1e;color:#ccc;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── 툴바 ── */
+.toolbar{height:44px;background:#2d2d2d;border-bottom:1px solid #3c3c3c;display:flex;align-items:center;gap:8px;padding:0 14px;flex-shrink:0}
+.toolbar-title{font-size:13px;color:#ccc;font-weight:600}
+.spacer{flex:1}
+.btn{background:#3c3c3c;border:1px solid #555;border-radius:4px;color:#ccc;padding:4px 10px;font-size:12px;cursor:pointer}
+.btn:hover{background:#4a4a4a}
+.btn.primary{background:#0e639c;border-color:#0e639c;color:#fff}
+
+/* ── 레이아웃 ── */
+.main-layout{display:flex;flex:1;overflow:hidden}
+
+/* ══════════════════════════════════
+   좌측 패널
+══════════════════════════════════ */
+.left-panel{width:264px;min-width:160px;max-width:480px;border-right:1px solid #3c3c3c;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;position:relative}
+
+/* 공통 섹션 헤더 */
+.sec-header{padding:6px 10px;font-size:11px;color:#888;letter-spacing:.05em;font-weight:600;background:#252525;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;border-bottom:1px solid #333;flex-shrink:0}
+.sec-header:hover{background:#2c2c2c}
+.sec-header .tog{font-size:10px;color:#555}
+
+/* ── 1. 페이지 트리 ── */
+.tree-section{display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;height:40%}
+.tree-header{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#252525;border-bottom:1px solid #333}
+.tree-header-title{font-size:11px;color:#888;font-weight:600;letter-spacing:.05em}
+.tree-tab-bar{display:flex;background:#1e1e1e;border-bottom:1px solid #333}
+.tree-tab{flex:1;padding:5px 0;font-size:11px;color:#666;text-align:center;cursor:pointer;border-bottom:2px solid transparent}
+.tree-tab:hover{color:#aaa}
+.tree-tab.active{color:#4fc1ff;border-bottom-color:#4fc1ff}
+.tree-body{overflow-y:auto;flex:1}
+
+/* 트리 아이템 */
+.tree-item{display:flex;align-items:center;gap:6px;padding:5px 10px;font-size:12px;color:#aaa;cursor:pointer;user-select:none}
+.tree-item:hover{background:#2a2a2a}
+.tree-item.sel{background:#1a3a5c;color:#4fc1ff}
+.tree-item .ti-icon{font-size:11px;flex-shrink:0}
+.tree-item .ti-label{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree-item .ti-meta{font-size:10px;color:#555}
+.tree-group-label{padding:6px 10px 2px;font-size:10px;color:#555;letter-spacing:.06em;text-transform:uppercase}
+.tree-sub{padding-left:20px}
+.ti-toggle{font-size:10px;color:#555;cursor:pointer;width:14px;flex-shrink:0;text-align:center;line-height:1}
+.ti-toggle:hover{color:#9a9a9a}
+
+/* ── 2. 참여자 패널 ── */
+.participants-section{display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;height:30%}
+.p-body{overflow-y:auto;flex:1}
+.p-row{display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer}
+.p-row:hover{background:#2a2a2a}
+.p-row.sel{background:#1a3a5c}
+.p-check{width:13px;height:13px;accent-color:#0e8fdd;flex-shrink:0;cursor:pointer}
+.p-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.p-name{flex:1;font-size:12px}
+.ref-star{color:#ffd54f;font-size:11px;cursor:help}
+/* 참여자 컨텍스트 메뉴 */
+.p-edit-btn{margin-left:2px;flex-shrink:0;background:none;border:none;color:#444;font-size:13px;cursor:pointer;padding:0 2px;line-height:1;border-radius:3px}
+.p-edit-btn:hover{color:#aaa;background:#333}
+.p-ctx{position:fixed;background:#1e1e1e;border:1px solid #3c3c3c;border-radius:7px;padding:12px;width:190px;z-index:900;box-shadow:0 6px 24px rgba(0,0,0,.6);display:none;flex-direction:column;gap:8px}
+.p-ctx-sec{font-size:10px;color:#666;font-weight:600;letter-spacing:.04em}
+.p-ctx-colors{display:flex;flex-wrap:wrap;gap:5px}
+.p-swatch{width:20px;height:20px;border-radius:4px;cursor:pointer;border:2px solid transparent;flex-shrink:0}
+.p-swatch:hover{filter:brightness(1.2)}
+.p-swatch.sel{border-color:#fff}
+.p-ctx-input{background:#2a2a2a;border:1px solid #444;color:#ddd;font-size:12px;border-radius:4px;padding:4px 8px;width:100%;box-sizing:border-box}
+.p-ctx-refrow{display:flex;align-items:center;gap:6px;font-size:11px;color:#aaa;cursor:pointer}
+.p-ctx-refrow input{accent-color:#ffd54f;cursor:pointer}
+.p-ctx-apply{background:#1a3a5c;border:1px solid #0e639c;color:#4fc1ff;font-size:11px;border-radius:4px;padding:5px 0;cursor:pointer;font-weight:600}
+.p-ctx-apply:hover{background:#1f4a72}
+.p-time{font-size:10px;color:#999;font-variant-numeric:tabular-nums;min-width:36px;text-align:right}
+.p-allrow{border-bottom:1px solid #333;background:#202020}
+.p-allrow:hover{background:#262626}
+.badge{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700}
+.badge.ok{background:#1a4a1a;color:#81c784}
+.badge.ng{background:#4a1a1a;color:#e57373}
+
+/* ── 3. AOI 분석 패널 ── */
+.prop-section{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:80px}
+.prop-body{flex:1;overflow-y:auto;padding:10px 10px 14px;display:flex;flex-direction:column;gap:0}
+.aoi-row{display:flex;align-items:center;gap:7px;padding:5px 10px}
+.aoi-swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.aoi-lbl{font-size:12px;flex:1}
+.aoi-sym{font-size:10px;color:#666}
+
+/* 통계 */
+.prop-group{margin-bottom:12px}
+.prop-group-title{font-size:10px;color:#555;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px;padding-bottom:3px;border-bottom:1px solid #2a2a2a}
+.prop-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:11px;gap:6px}
+.prop-key{color:#666;flex-shrink:0}
+.prop-val{color:#c0c0c0;text-align:right;word-break:break-all}
+.prop-val.accent{color:#4fc1ff}
+.prop-val.ok{color:#81c784}
+.prop-val.ng{color:#e57373}
+.prop-swatch{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:middle;margin-right:3px}
+.prop-tag{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;margin:1px 2px 1px 0;border:1px solid #3a3a3a;color:#aaa}
+.prop-empty{color:#3a3a3a;font-size:11px;padding:14px 0;text-align:center}
+.prop-bar-wrap{height:4px;background:#2a2a2a;border-radius:2px;margin-top:3px;overflow:hidden}
+.prop-bar-fill{height:4px;border-radius:2px}
+.stat-row{display:flex;justify-content:space-between;font-size:12px}
+.stat-key{color:#888}
+.stat-val{color:#ccc;font-weight:600}
+.bar-wrap{height:4px;background:#333;border-radius:2px;margin-top:2px}
+.bar-fill{height:4px;border-radius:2px}
+
+/* ══════════════════════════════════
+   우측 콘텐츠
+══════════════════════════════════ */
+.content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* 탭 바 */
+.tab-bar{display:flex;align-items:center;background:#252525;border-bottom:1px solid #3c3c3c;flex-shrink:0;height:38px}
+.tab{padding:0 18px;font-size:12px;color:#888;cursor:pointer;height:100%;display:flex;align-items:center;border-bottom:2px solid transparent}
+.tab:hover{color:#ccc;background:#2a2a2a}
+.tab.active{color:#4fc1ff;border-bottom-color:#4fc1ff}
+
+/* 배율 컨트롤 (중앙) */
+.tab-scale{display:flex;align-items:center;gap:6px}
+.tab-scale select{background:#333;border:1px solid #4a4a4a;border-radius:4px;color:#bbb;font-size:11px;padding:3px 6px;cursor:pointer;outline:none}
+.tab-scale select:focus{border-color:#0e639c}
+.tab-scale input[type=number]{background:#333;border:1px solid #4a4a4a;border-radius:4px;color:#bbb;font-size:11px;padding:3px 5px;width:52px;text-align:center;outline:none}
+.tab-scale input[type=number]:focus{border-color:#0e639c}
+.tab-scale span{font-size:11px;color:#666}
+
+/* 탭 콘텐츠 */
+.tab-content{flex:1;overflow:hidden;display:none}
+.tab-content.active{display:flex;flex-direction:column}
+
+/* 탭 중앙 컨트롤 */
+.tab-center{display:flex;align-items:center;gap:6px}
+.tab-sep{width:1px;height:18px;background:#444;margin:0 3px}
+.vm-btn{background:#2d2d2d;border:1px solid #444;border-radius:4px;color:#777;font-size:11px;padding:4px 11px;cursor:pointer;transition:all .12s}
+.vm-btn:hover{color:#ccc;background:#3a3a3a}
+.vm-btn.active{background:#1a3a5c;border-color:#0e639c;color:#4fc1ff;font-weight:600}
+
+/* 페이지 뷰 */
+.page-view{flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:24px;background:#1a1a1a}
+.pdf-wrap{position:relative;background:#fff;width:595px;height:842px;box-shadow:0 4px 24px rgba(0,0,0,.6);flex-shrink:0;transition:width .15s,height .15s}
+.pdf-text{position:absolute;inset:0;padding:40px 48px;color:#333;font-size:11px;line-height:1.65;pointer-events:none}
+.page-num-badge{position:absolute;bottom:12px;right:14px;font-size:10px;color:#aaa;background:rgba(0,0,0,.1);border-radius:3px;padding:1px 6px;pointer-events:none}
+
+/* 이동경로 탭 분할 */
+.scarf-split{flex:1;display:flex;overflow:hidden}
+.scarf-left{flex:0 0 auto;width:60%;min-width:200px;max-width:80%;overflow:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+.scarf-divider{width:5px;flex-shrink:0;background:#252525;cursor:col-resize;transition:background .12s}
+.scarf-divider:hover,.scarf-divider.dragging{background:#0e639c}
+.sim-right{flex:1;min-width:160px;overflow:auto;padding:16px 14px;display:flex;flex-direction:column;gap:10px}
+/* export */
+.tab-export-wrap{padding:0 10px 0 0;flex-shrink:0}
+.sim-toolbar{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.sim-label{font-size:11px;color:#777;white-space:nowrap}
+.algo-group{display:flex;gap:4px}
+.algo-btn{background:#252525;border:1px solid #3a3a3a;color:#777;font-size:11px;border-radius:4px;padding:3px 10px;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.algo-btn:hover{background:#2e2e2e;color:#bbb}
+.algo-btn.active{background:#1a3a5c;border-color:#0e639c;color:#4fc1ff}
+.algo-help{position:relative;display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#333;color:#666;font-size:9px;font-weight:700;cursor:help;flex-shrink:0;line-height:1}
+.algo-help::after{content:attr(data-tip);position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#222;border:1px solid #444;color:#ccc;font-size:10px;line-height:1.55;padding:7px 10px;border-radius:5px;width:200px;white-space:pre-wrap;text-align:left;pointer-events:none;opacity:0;transition:opacity .15s;z-index:200;font-weight:400}
+.algo-help:hover::after{opacity:1}
+.sim-hint{font-size:10px;color:#555;margin-left:4px}
+.sim-body{overflow:auto}
+/* 유사도 매트릭스 공통 */
+.sim-mx,.ref-mx{border-collapse:collapse;font-size:11px;white-space:nowrap;width:100%}
+.sim-mx th,.ref-mx th{color:#777;font-weight:600;text-align:center;padding:5px 8px;position:sticky;top:0;background:#1a1a1a;border-bottom:1px solid #333}
+.sim-mx th.row-head,.ref-mx th.row-head{text-align:left;left:0;z-index:2;min-width:80px;background:#1a1a1a}
+.sim-mx td,.ref-mx td{text-align:center;padding:6px 8px;border:1px solid #222;font-variant-numeric:tabular-nums;font-size:11px;cursor:default}
+.sim-mx td.diag{background:#1e1e1e;color:#2e2e2e}
+.ref-mx td.avg-row{font-weight:700;border-top:1px solid #3c3c3c}
+.ref-mx tr.avg-tr th{border-top:1px solid #3c3c3c;color:#aaa}
+.ref-block{margin-top:18px}
+.ref-block-title{font-size:11px;color:#888;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.ref-block-title .ref-star-s{color:#ffd54f}
+.p-dot-s{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
+/* Scarf 범례 */
+.legend{display:flex;flex-wrap:wrap;gap:10px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#aaa}
+.legend-color{width:16px;height:10px;border-radius:2px}
+
+/* 매트릭스 */
+.matrix-wrap{flex:1;overflow:auto;padding:20px 24px;display:flex;flex-direction:column;gap:14px}
+.matrix-desc{font-size:11px;color:#666}
+.scope-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#4d96ff;background:rgba(77,150,255,0.10);border:1px solid rgba(77,150,255,0.28);border-radius:4px;padding:2px 8px;align-self:flex-start;margin-bottom:2px}
+.scope-badge:empty{display:none}
+table.mx{border-collapse:collapse}
+table.mx th,table.mx td{border:1px solid #333;text-align:center}
+table.mx th{background:#252525;color:#777;font-size:11px;font-weight:600;padding:6px 10px;white-space:nowrap}
+table.mx td{width:60px;height:50px;font-size:12px;vertical-align:middle}
+.cell-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:1px}
+.cell-cnt{font-size:13px;font-weight:700}
+.cell-pct{font-size:9px;color:#999}
+
+/* ── 재생 패널 ── */
+.playback-panel{height:46px;background:#252525;border-top:1px solid #3c3c3c;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:0 14px;user-select:none}
+.play-btn{width:30px;height:30px;background:#3c3c3c;border:1px solid #555;border-radius:50%;color:#ccc;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.play-btn:hover{background:#4a4a4a;color:#fff}
+.time-disp{font-size:11px;color:#888;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:72px}
+.time-disp .cur{color:#ccc}
+.pb-wrap{flex:1;padding:10px 0;cursor:pointer;position:relative}
+.pb-track{height:4px;background:#444;border-radius:2px;position:relative}
+.pb-fill{height:4px;background:#0e8fdd;border-radius:2px;width:0%;pointer-events:none}
+.pb-thumb{width:12px;height:12px;background:#fff;border-radius:50%;position:absolute;top:-4px;left:0%;transform:translateX(-50%);cursor:grab;box-shadow:0 1px 4px rgba(0,0,0,.5);transition:transform .08s}
+.pb-thumb:hover{transform:translateX(-50%) scale(1.25)}
+
+/* ── 리사이즈 핸들 ── */
+.sidebar-resize{position:absolute;top:0;right:-3px;width:6px;height:100%;cursor:ew-resize;z-index:20;transition:background .15s}
+.sidebar-resize:hover,.sidebar-resize.dragging{background:rgba(14,99,156,.55)}
+.pane-handle{height:5px;flex-shrink:0;cursor:ns-resize;background:#2a2a2a;border-top:1px solid #3c3c3c;border-bottom:1px solid #3c3c3c;transition:background .15s}
+.pane-handle:hover,.pane-handle.dragging{background:#0e639c}
+body.resizing-h{cursor:ew-resize!important;user-select:none}
+body.resizing-v{cursor:ns-resize!important;user-select:none}
+
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#555;border-radius:3px}
+input[type=number]::-webkit-inner-spin-button{opacity:.4}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="toolbar-title">📊 시선 분석 결과 — 2025 PSAT 언어논리 5번</span>
+  <div class="spacer"></div>
+  <button class="btn">내보내기</button>
+  <button class="btn primary" onclick="alert('AOI 편집 화면으로 이동')">AOI 편집</button>
+</div>
+
+<!-- 참여자 편집 팝업 -->
+<div class="p-ctx" id="pCtx">
+  <div class="p-ctx-sec">색상</div>
+  <div class="p-ctx-colors" id="pCtxColors"></div>
+  <div class="p-ctx-sec">이름</div>
+  <input class="p-ctx-input" id="pCtxName" type="text" maxlength="20" placeholder="참여자 이름">
+  <label class="p-ctx-refrow">
+    <input type="checkbox" id="pCtxRef"> 기준 시선 (유사경로 비교 기준)
+  </label>
+  <button class="p-ctx-apply" onclick="applyPCtx()">적용</button>
+</div>
+
+<div class="main-layout">
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━
+       좌측 패널
+  ━━━━━━━━━━━━━━━━━━━━━ -->
+  <div class="left-panel" id="leftPanel">
+    <div class="sidebar-resize" id="sidebarResize"></div>
+
+    <!-- 1. 페이지 트리 -->
+    <div class="tree-section" id="treeSection">
+      <div class="tree-header">
+        <span class="tree-header-title">탐색</span>
+      </div>
+      <div class="tree-tab-bar">
+        <div class="tree-tab active" id="tt-page"  onclick="setTreeTab('page')">페이지뷰</div>
+        <div class="tree-tab"        id="tt-group" onclick="setTreeTab('group')">그룹뷰</div>
+      </div>
+      <div class="tree-body" id="treeBody"></div>
+    </div>
+
+    <div class="pane-handle" id="ph1"></div>
+
+    <!-- 2. 참여자 -->
+    <div class="participants-section" id="partSection">
+      <div class="sec-header" onclick="toggleSec('p-body','p-tog')">
+        <span>참여자 <span id="pCount" style="color:#555;font-weight:400"></span></span>
+        <span class="tog" id="p-tog">▲</span>
+      </div>
+      <div class="p-body" id="p-body"></div>
+    </div>
+
+    <div class="pane-handle" id="ph2"></div>
+
+    <!-- 3. 프로퍼티 패널 -->
+    <div class="prop-section" id="propSection">
+      <div class="sec-header">
+        <span>프로퍼티 <span id="propLabel" style="color:#555;font-weight:400"></span></span>
+      </div>
+      <div class="prop-body" id="propBody"></div>
+    </div>
+
+  </div>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━
+       우측 콘텐츠
+  ━━━━━━━━━━━━━━━━━━━━━ -->
+  <div class="content">
+
+    <!-- 탭 바 -->
+    <div class="tab-bar">
+      <div class="tab active" onclick="switchTab('page')">시선경로</div>
+      <div class="tab" onclick="switchTab('scarf')">이동경로</div>
+      <div class="tab" onclick="switchTab('matrix')">AOI전이</div>
+      <div style="flex:1"></div>
+      <!-- 중앙: 시선경로 전용 컨트롤 -->
+      <div class="tab-center" id="tabCenter">
+        <button class="vm-btn active" id="vm-fix"   onclick="setViewMode('fixation')">응시 보기</button>
+        <button class="vm-btn"        id="vm-visit" onclick="setViewMode('visit')">비짓 보기</button>
+        <span class="tab-sep"></span>
+        <div class="tab-scale">
+          <select id="scaleSelect" onchange="setScaleMode(this.value)">
+            <option value="original">원본 크기</option>
+            <option value="fit-height">상하 맞춤</option>
+            <option value="fit-width">좌우 맞춤</option>
+            <option value="manual">수동 설정</option>
+          </select>
+          <input type="number" id="scaleInput" value="100" min="20" max="300"
+            onchange="setScaleValue(+this.value)" onkeydown="if(event.key==='Enter')setScaleValue(+this.value)">
+          <span>%</span>
+        </div>
+      </div>
+      <div style="flex:1"></div>
+      <div class="tab-export-wrap">
+        <button class="vm-btn" onclick="exportCurrent()">↓ 내보내기</button>
+      </div>
+    </div>
+
+    <!-- 시선경로 탭 -->
+    <div class="tab-content active" id="tab-page">
+      <div class="page-view" id="pageView">
+        <div class="pdf-wrap" id="pdfWrap"></div>
+      </div>
+
+      <!-- 재생 패널 -->
+      <div class="playback-panel">
+        <button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button>
+        <div class="time-disp"><span class="cur" id="timeCur">0:00</span> / <span id="timeTot">0:00</span></div>
+        <div class="pb-wrap" id="pbWrap">
+          <div class="pb-track" id="pbTrack">
+            <div class="pb-fill"  id="pbFill"></div>
+            <div class="pb-thumb" id="pbThumb"></div>
+          </div>
+        </div>
+        <span id="modeLabel" style="font-size:10px;color:#888;white-space:nowrap;min-width:150px;text-align:right"></span>
+      </div>
+    </div>
+
+    <!-- 이동경로 탭 (좌: 스카프 / 우: 유사도 매트릭스) -->
+    <div class="tab-content" id="tab-scarf">
+      <div class="scarf-split">
+        <!-- 좌: 스카프 차트 -->
+        <div class="scarf-left">
+          <div class="scope-badge" id="scarfScope"></div>
+          <div class="legend" id="scarfLegend"></div>
+          <div id="scarfSvgWrap"></div>
+        </div>
+        <div class="scarf-divider" id="scarfDivider"></div>
+        <!-- 우: 유사도 매트릭스 -->
+        <div class="sim-right">
+          <div class="sim-toolbar">
+            <span class="sim-label">알고리듬</span>
+            <div class="algo-group">
+              <button class="algo-btn active" data-algo="levenshtein" onclick="setSimAlgo(this)">
+                Levenshtein
+                <span class="algo-help" data-tip="두 경로를 동일하게 만들기 위한 최소 편집 횟수(삽입·삭제·치환). 숫자가 작을수록 유사. 경로 길이와 순서를 모두 고려.">?</span>
+              </button>
+              <button class="algo-btn" data-algo="lcs" onclick="setSimAlgo(this)">
+                LCS
+                <span class="algo-help" data-tip="최장공통부분수열(Longest Common Subsequence). 순서를 유지하되 비연속적으로 공통 방문 AOI를 찾음. 숫자가 클수록 유사. 삽입·삭제만 허용(치환 없음).">?</span>
+              </button>
+              <button class="algo-btn" data-algo="bigram" onclick="setSimAlgo(this)">
+                Bigram
+                <span class="algo-help" data-tip="연속된 AOI 전환 쌍(A→B, B→C 등)을 집합으로 비교(Jaccard). '어떤 순서로 이동했는가' 패턴에 특화. 숫자가 클수록 유사.">?</span>
+              </button>
+            </div>
+            <span class="sim-hint" id="simHint"></span>
+          </div>
+          <div class="sim-body" id="simBody"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 매트릭스 탭 -->
+    <div class="tab-content" id="tab-matrix">
+      <div class="matrix-wrap">
+        <div class="scope-badge" id="matrixScope"></div>
+        <div class="matrix-desc">행: 출발 AOI &nbsp;→&nbsp; 열: 도착 AOI &nbsp;|&nbsp; 숫자: 전이 횟수, 괄호: 행 합계 대비 확률</div>
+        <div id="matrixWrap"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// 데이터
+// ════════════════════════════════════════
+// ── 페이지 (각 페이지가 자체 AOI + 지문 텍스트를 가짐) ──
+const PAGES = [
+  { number:1, label:'페이지 1 (지문)',   aoiIds:['A','B'],
+    text:`<p style="font-weight:700;margin-bottom:14px">5. 다음 글의 내용과 부합하는 것은?</p>
+      <p style="margin-bottom:10px">민주주의는 단순히 다수결 원칙만을 의미하지 않는다. 진정한 민주주의는 소수의 권리를 보호하고, 모든 시민이 자신의 의사를 자유롭게 표현할 수 있는 환경을 전제로 한다. 이를 위해서는 표현의 자유, 집회의 자유, 그리고 공정한 선거 절차가 반드시 보장되어야 한다.</p>
+      <p style="margin-bottom:10px">또한 민주주의는 법치주의와 불가분의 관계에 있다. 아무리 다수의 의사라 하더라도 법에 위배되는 결정은 민주주의의 이름으로 정당화될 수 없다. 헌법은 민주주의의 근본 원칙을 수호하는 최후의 보루이다.</p>
+      <p style="margin-bottom:10px">시민 사회의 성숙도는 민주주의의 질을 결정하는 핵심 요소이다. 활발한 토론과 비판, 그리고 다양한 의견의 공존이야말로 건강한 민주주의의 토양이 된다.</p>
+      <br>
+      <p style="font-weight:700;color:#888">▶ 위 글을 읽고 다음 페이지에서 선택지를 고르시오.</p>` },
+  { number:2, label:'페이지 2 (선택지)', aoiIds:['C','D','E','F','G'],
+    text:`<p style="font-weight:700;margin-bottom:20px">위 글의 내용과 부합하는 것은?</p>
+      <p style="margin-bottom:34px">① 다수결 원칙은 민주주의의 충분조건이다.</p>
+      <p style="margin-bottom:34px">② 소수의 권리 보호는 민주주의와 무관하다.</p>
+      <p style="margin-bottom:34px">③ 법치주의는 민주주의와 별개의 원리이다.</p>
+      <p style="margin-bottom:34px">④ 헌법은 민주주의의 근본 원칙을 수호하는 최후의 보루이다.</p>
+      <p style="margin-bottom:34px">⑤ 표현의 자유만으로 민주주의가 완성된다.</p>` },
+];
+const TREE_GROUPS = [
+  { id:'g1', name:'Q1', type:'5지선다', aoiIds:['A','B','C','D','E','F','G'] },
+  { id:'g2', name:'Q2', type:'5지선다', aoiIds:[] },
+];
+
+// ── AOI (각자 소속 page) ──
+const AOIS = [
+  { id:'A', name:'지문',     symbol:'A', color:'#4fc3f7', type:'지문',      page:1 },
+  { id:'B', name:'발문',     symbol:'B', color:'#81c784', type:'문제',      page:1 },
+  { id:'C', name:'① 선택지', symbol:'C', color:'#ffb74d', type:'선택지',    page:2 },
+  { id:'D', name:'② 선택지', symbol:'D', color:'#ffa040', type:'선택지',    page:2 },
+  { id:'E', name:'③ 선택지', symbol:'E', color:'#ff8c30', type:'선택지',    page:2 },
+  { id:'F', name:'④ 정답',   symbol:'F', color:'#e57373', type:'정답선택지', page:2 },
+  { id:'G', name:'⑤ 선택지', symbol:'G', color:'#ff7043', type:'선택지',    page:2 },
+];
+const aoiById = id => AOIS.find(a => a.id === id);
+
+// ── AOI 위치 (각 페이지의 595×842 좌표계) ──
+const AOI_RECTS = {
+  A:{ x:40, y:55,  w:515, h:360 },   // p1 지문
+  B:{ x:40, y:440, w:515, h:90  },   // p1 발문
+  C:{ x:40, y:75,  w:515, h:64  },   // p2 ①
+  D:{ x:40, y:170, w:515, h:64  },   // p2 ②
+  E:{ x:40, y:265, w:515, h:64  },   // p2 ③
+  F:{ x:40, y:360, w:515, h:64  },   // p2 ④ 정답
+  G:{ x:40, y:455, w:515, h:64  },   // p2 ⑤
+};
+
+// ── 참여자 AOI 방문 시퀀스 [aoiId, 초].  page는 aoiId에서 파생 ──
+// P1은 요청대로 1→2→1→2 페이지 왕복
+const RAW = {
+  P1:[['A',8],['B',4], ['C',2],['D',2],['E',2],['F',3], ['A',5],['B',3], ['F',2],['G',2]],
+  P2:[['A',10],['B',4], ['C',3],['D',2],['E',2],['F',4],['G',2]],
+  P3:[['B',3],['A',12], ['D',3],['F',5],['E',2]],
+  P4:[['A',7],['B',3], ['C',2],['D',2],['E',2],['G',2], ['A',4],['B',2]],
+  P5:[['A',9],['B',4], ['C',3],['D',3],['E',3],['F',3]],
+  P6:[['A',6],['B',3], ['C',4],['D',2],['F',3],['G',3]],
+  P7:[['A',11],['B',3], ['F',4], ['A',3], ['E',2]],
+  P8:[['B',2],['A',8], ['C',3],['D',3],['G',4],['F',2]],
+};
+
+const PARTICIPANTS = [
+  { id:'P1', name:'참여자 1', ref:true,  correctByGroup:{ g1:true,  g2:false } },
+  { id:'P2', name:'참여자 2', ref:false, correctByGroup:{ g1:true,  g2:true  } },
+  { id:'P3', name:'참여자 3', ref:false, correctByGroup:{ g1:true,  g2:false } },
+  { id:'P4', name:'참여자 4', ref:false, correctByGroup:{ g1:false, g2:false } },
+  { id:'P5', name:'참여자 5', ref:false, correctByGroup:{ g1:true,  g2:true  } },
+  { id:'P6', name:'참여자 6', ref:false, correctByGroup:{ g1:false, g2:true  } },
+  { id:'P7', name:'참여자 7', ref:false, correctByGroup:{ g1:true,  g2:false } },
+  { id:'P8', name:'참여자 8', ref:false, correctByGroup:{ g1:false, g2:false } },
+];
+
+const P_COLORS = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff922b','#cc5de8','#20c997','#a9e34b'];
+
+// visit 시퀀스: 각 seg에 page + 절대 start/end
+function buildSeq(pid) {
+  let t = 0;
+  return RAW[pid].map(([aoiId, dur]) => {
+    const seg = { aoiId, page: aoiById(aoiId).page, start:t, end:t+dur };
+    t += dur;
+    return seg;
+  });
+}
+const SEQS = {};
+PARTICIPANTS.forEach(p => { SEQS[p.id] = buildSeq(p.id); });
+const MAX_T = Math.max(...PARTICIPANTS.map(p => SEQS[p.id].at(-1).end));
+
+// fixation 데이터: 각 점이 {t(절대), page, x, y, dur, aoiId}
+function buildFixations() {
+  const BIASES = [[-50,-5],[40,8],[-15,0],[60,-10],[-35,5],[25,12],[70,-8],[-55,3]];
+  const res = {};
+  PARTICIPANTS.forEach((p, pi) => {
+    let seed = (pi + 1) * 48271;
+    const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 0xffffffff; };
+    const [bx, by] = BIASES[pi];
+    const fixes = [];
+    let cumT = 0;
+    RAW[p.id].forEach(([aoiId, totalDur]) => {
+      const a = aoiById(aoiId);
+      const r = AOI_RECTS[aoiId];
+      const n = Math.max(2, Math.round(totalDur / 0.25));
+      const perDur = totalDur / n;
+      for (let i = 0; i < n; i++) {
+        const xFrac = (i + 0.5 + (rnd() - 0.5) * 0.5) / n;
+        const yFrac = 0.15 + rnd() * 0.7;
+        const rx = r.x + 12 + xFrac * (r.w - 24) + bx * 0.4;
+        const ry = r.y + 3  + yFrac * (r.h - 6)  + by;
+        fixes.push({
+          x: Math.max(r.x + 4, Math.min(r.x + r.w - 4, Math.round(rx))),
+          y: Math.max(r.y + 3, Math.min(r.y + r.h - 3, Math.round(ry))),
+          dur: Math.round(perDur * 100) / 100,
+          t: Math.round((cumT + i * perDur) * 1000) / 1000,
+          page: a.page,
+          aoiId
+        });
+      }
+      cumT += totalDur;
+    });
+    res[p.id] = fixes;
+  });
+  return res;
+}
+const FIXATIONS = buildFixations();
+
+// ════════════════════════════════════════
+// 상태
+// ════════════════════════════════════════
+const visible = new Set(PARTICIPANTS.map(p => p.id));
+let selPid    = null;
+let curTab    = 'page';
+let curTreeTab = 'page';   // 'page' | 'group'
+let curPage   = 1;
+let curGroupId = 'g1';
+let selAoiId  = null;
+let viewMode  = 'fixation';   // 'fixation' | 'visit'
+const expandedPages  = new Set([1]);
+const expandedGroups = new Set(['g1']);
+
+const PDF_W = 595, PDF_H = 842;
+let scale     = 100;
+let scaleMode = 'original';
+
+// ════════════════════════════════════════
+// 유틸
+// ════════════════════════════════════════
+function hex2rgba(hex, a) {
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ════════════════════════════════════════
+// 배율
+// ════════════════════════════════════════
+function applyScale() {
+  const view = document.getElementById('pageView');
+  let s = scale / 100;
+  if (scaleMode === 'fit-height') s = (view.clientHeight - 48) / PDF_H;
+  else if (scaleMode === 'fit-width') s = (view.clientWidth - 48) / PDF_W;
+  scale = Math.round(s * 100);
+  document.getElementById('scaleInput').value = scale;
+  const wrap = document.getElementById('pdfWrap');
+  if (wrap) {
+    wrap.style.width  = (PDF_W * s) + 'px';
+    wrap.style.height = (PDF_H * s) + 'px';
+  }
+}
+function setScaleMode(mode) {
+  scaleMode = mode;
+  const sel = document.getElementById('scaleSelect');
+  if (sel.value !== mode) sel.value = mode;
+  applyScale();
+}
+function setScaleValue(v) {
+  scale = Math.max(20, Math.min(300, v || 100));
+  scaleMode = 'manual';
+  document.getElementById('scaleSelect').value = 'manual';
+  applyScale();
+}
+
+// ════════════════════════════════════════
+// 페이지 트리
+// ════════════════════════════════════════
+function setTreeTab(tab) {
+  curTreeTab = tab;
+  document.getElementById('tt-page').classList.toggle('active', tab==='page');
+  document.getElementById('tt-group').classList.toggle('active', tab==='group');
+  renderTree();
+}
+
+// 해당 페이지 내 AOI별 체류시간 합산 (visible 참여자 기준)
+function pageAoiDwells(pageNum) {
+  const visList = PARTICIPANTS.filter(p => visible.has(p.id));
+  const dwell = {};
+  AOIS.filter(a => a.page === pageNum).forEach(a => { dwell[a.id] = 0; });
+  visList.forEach(p => {
+    SEQS[p.id].filter(s => s.page === pageNum).forEach(s => {
+      if (dwell[s.aoiId] !== undefined) dwell[s.aoiId] += s.end - s.start;
+    });
+  });
+  return dwell;
+}
+
+function aoiSubItem(a, indent, dwells, totalDwell) {
+  const sel = selAoiId === a.id;
+  const pct = totalDwell > 0 && dwells ? (dwells[a.id] || 0) / totalDwell * 100 : null;
+  const pctHtml = pct !== null
+    ? `<span style="font-size:10px;color:${sel?'#7dd3fc':'#555'};margin-left:4px;flex-shrink:0">${pct.toFixed(0)}%</span>`
+    : '';
+  return `<div class="tree-item tree-sub ${sel?'sel':''}" style="padding-left:${indent}px;cursor:pointer"
+      onclick="event.stopPropagation();selectAoi('${a.id}')">
+    <span style="width:8px;height:8px;border-radius:2px;flex-shrink:0;background:${a.color};display:inline-block"></span>
+    <span class="ti-label" style="font-size:11px;color:${sel?'#4fc1ff':'#999'}">${a.symbol} ${a.name}</span>
+    ${pctHtml}
+  </div>`;
+}
+
+function renderTree() {
+  const body = document.getElementById('treeBody');
+  if (curTreeTab === 'page') {
+    const docSel = propSel.kind==='doc';
+    let html = `
+      <div class="tree-item ${docSel?'sel':''}" onclick="selectDoc()">
+        <span class="ti-toggle" style="color:#3a3a3a">·</span>
+        <span class="ti-icon">📁</span>
+        <span class="ti-label" style="font-weight:600">문서</span>
+        <span class="ti-meta">${PAGES.length}p · ${AOIS.length} AOI</span>
+      </div>`;
+    html += PAGES.map(p => {
+      const open = expandedPages.has(p.number);
+      const hasAoi = p.aoiIds.length > 0;
+      const toggle = hasAoi
+        ? `<span class="ti-toggle" onclick="event.stopPropagation();togglePageExpand(${p.number})">${open?'▾':'▸'}</span>`
+        : `<span class="ti-toggle" style="color:#3a3a3a">·</span>`;
+      const dwells = hasAoi ? pageAoiDwells(p.number) : null;
+      const totalDwell = dwells ? Object.values(dwells).reduce((s,v)=>s+v, 0) : 0;
+      const children = (open && hasAoi)
+        ? p.aoiIds.map(aid => { const a=aoiById(aid); return a?aoiSubItem(a, 36, dwells, totalDwell):''; }).join('')
+        : '';
+      return `
+        <div class="tree-item ${curPage===p.number&&propSel.kind==='page'?'sel':''}" style="padding-left:12px" onclick="selectPage(${p.number})">
+          ${toggle}
+          <span class="ti-icon">📄</span>
+          <span class="ti-label">${p.label}</span>
+          ${p.timeLimit ? `<span class="ti-meta">${p.timeLimit}s</span>` : ''}
+        </div>
+        ${children}`;
+    }).join('');
+    body.innerHTML = html;
+  } else {
+    const visList = PARTICIPANTS.filter(p => visible.has(p.id));
+    const total = visList.length;
+
+    body.innerHTML = TREE_GROUPS.map(g => {
+      const gCorrect = visList.filter(p => p.correctByGroup?.[g.id]).length;
+      const gPct = total > 0 ? Math.round(gCorrect / total * 100) : null;
+      const gColor = gPct === null ? '#555' : gPct >= 70 ? '#81c784' : gPct >= 40 ? '#ffd93d' : '#e57373';
+      const open = expandedGroups.has(g.id);
+      const toggle = `<span class="ti-toggle" onclick="event.stopPropagation();toggleGroupExpand('${g.id}')">${open?'▾':'▸'}</span>`;
+      const children = open
+        ? (g.aoiIds.length
+            ? g.aoiIds.map(aid => { const a=aoiById(aid); return a?aoiSubItem(a,24,null,0):''; }).join('')
+            : `<div class="tree-item tree-sub" style="padding-left:24px;color:#444;font-size:11px;pointer-events:none">비어 있음</div>`)
+        : '';
+      const pctHtml = gPct !== null
+        ? `<span style="font-size:10px;color:${gColor};margin-left:4px;flex-shrink:0">${gPct}%</span>`
+        : '';
+      return `
+        <div class="tree-item ${curGroupId===g.id?'sel':''}" onclick="selectGroup('${g.id}')">
+          ${toggle}
+          <span class="ti-label" style="font-weight:600">${g.name}</span>
+          <span class="ti-meta">${g.type}</span>
+          ${pctHtml}
+        </div>
+        ${children}`;
+    }).join('');
+  }
+}
+
+function togglePageExpand(n) {
+  expandedPages.has(n) ? expandedPages.delete(n) : expandedPages.add(n);
+  renderTree();
+}
+function toggleGroupExpand(id) {
+  expandedGroups.has(id) ? expandedGroups.delete(id) : expandedGroups.add(id);
+  renderTree();
+}
+
+function renderCurrentTab() {
+  if (curTab === 'page')   { resetPlayback(); renderPage(); }
+  if (curTab === 'scarf')  { renderScarf(); renderSim(); }
+  if (curTab === 'matrix') { renderMatrix(); }
+}
+
+function selectPage(n) {
+  selAoiId = null;
+  curPage = n;
+  propSel = { kind:'page', id:n };
+  renderTree();
+  renderParticipants();
+  renderProp();
+  renderCurrentTab();
+}
+function selectDoc() {
+  selAoiId = null;
+  propSel = { kind:'doc', id:null };
+  renderTree(); renderProp();
+  renderCurrentTab();
+}
+function selectGroup(id) {
+  selAoiId = null;
+  curGroupId = id;
+  propSel = { kind:'group', id };
+  const g = TREE_GROUPS.find(x => x.id === id);
+  if (g && g.aoiIds.length) {
+    const a = aoiById(g.aoiIds[0]);
+    if (a && a.page !== curPage) { curPage = a.page; renderParticipants(); }
+  }
+  renderTree(); renderProp();
+  renderCurrentTab();
+}
+function selectAoi(id) {
+  selAoiId = selAoiId === id ? null : id;
+  propSel = selAoiId ? { kind:'aoi', id:selAoiId } : { kind:'doc', id:null };
+  if (selAoiId) {
+    const a = aoiById(selAoiId);
+    if (a && a.page !== curPage) { curPage = a.page; renderParticipants(); }
+  }
+  renderTree(); renderProp();
+  renderCurrentTab();
+}
+
+// ════════════════════════════════════════
+// 참여자
+// ════════════════════════════════════════
+// 참여자의 현재 페이지 체류 시간(초)
+function pageDwell(pid) {
+  return SEQS[pid].filter(s => s.page === curPage).reduce((a,s)=>a+(s.end-s.start), 0);
+}
+
+function getParticipantContext() {
+  if (curTreeTab === 'group') {
+    if (propSel.kind === 'group') {
+      const g = TREE_GROUPS.find(x => x.id === propSel.id);
+      return {
+        headerLabel: g?.name || '그룹',
+        getTime: pid => SEQS[pid].filter(s=>g?.aoiIds.includes(s.aoiId)).reduce((a,s)=>a+(s.end-s.start),0),
+        getBadge: p => {
+          const ok = p.correctByGroup?.[propSel.id] ?? false;
+          return `<span class="badge ${ok?'ok':'ng'}">${ok?'정답':'오답'}</span>`;
+        }
+      };
+    }
+    if (propSel.kind === 'aoi') {
+      const parentGroup = TREE_GROUPS.find(g => g.aoiIds.includes(propSel.id));
+      return {
+        headerLabel: aoiById(propSel.id)?.symbol || 'AOI',
+        getTime: pid => SEQS[pid].filter(s=>s.aoiId===propSel.id).reduce((a,s)=>a+(s.end-s.start),0),
+        getBadge: p => {
+          if (!parentGroup) return '';
+          const ok = p.correctByGroup?.[parentGroup.id] ?? false;
+          return `<span class="badge ${ok?'ok':'ng'}">${ok?'정답':'오답'}</span>`;
+        }
+      };
+    }
+  }
+  if (curTreeTab === 'page') {
+    if (propSel.kind === 'doc') return {
+      headerLabel: '전체',
+      getTime: pid => { const s = SEQS[pid]; return s.length ? s.at(-1).end : 0; },
+      getBadge: () => ''
+    };
+    if (propSel.kind === 'page') return {
+      headerLabel: `P.${propSel.id}`,
+      getTime: pid => SEQS[pid].filter(s=>s.page===propSel.id).reduce((a,s)=>a+(s.end-s.start),0),
+      getBadge: () => ''
+    };
+    if (propSel.kind === 'aoi') {
+      const a = aoiById(propSel.id);
+      return {
+        headerLabel: a?.symbol || 'AOI',
+        getTime: pid => SEQS[pid].filter(s=>s.aoiId===propSel.id).reduce((a,s)=>a+(s.end-s.start),0),
+        getBadge: () => ''
+      };
+    }
+  }
+  return {
+    headerLabel: `P.${curPage}`,
+    getTime: pid => pageDwell(pid),
+    getBadge: () => ''
+  };
+}
+
+function renderParticipants() {
+  document.getElementById('pCount').textContent = `(${visible.size}/${PARTICIPANTS.length})`;
+  const allOn = visible.size === PARTICIPANTS.length;
+  const ctx = getParticipantContext();
+
+  const head = `
+    <div class="p-row p-allrow">
+      <input type="checkbox" class="p-check" id="pAllChk" ${allOn?'checked':''}
+        onclick="toggleAllParticipants(this.checked)">
+      <span class="p-name" style="color:#999;font-size:11px;font-weight:600">전체 선택</span>
+      <span class="p-time" style="color:#666;min-width:auto">${ctx.headerLabel}</span>
+    </div>`;
+
+  const rows = PARTICIPANTS.map((p,i) => {
+    const t = ctx.getTime ? ctx.getTime(p.id) : null;
+    const timeStr = t !== null && t > 0 ? t.toFixed(1)+'s' : t === null ? '' : '–';
+    return `
+    <div class="p-row ${selPid===p.id?'sel':''}" onclick="selectP('${p.id}')">
+      <input type="checkbox" class="p-check" ${visible.has(p.id)?'checked':''}
+        onclick="event.stopPropagation();toggleP('${p.id}',this.checked)">
+      <span class="p-dot" style="background:${P_COLORS[i]}"></span>
+      <span class="p-name">${p.name}${p.ref?' <span class="ref-star" title="기준 시선 (유사경로 비교 기준)">★</span>':''}</span>
+      ${timeStr ? `<span class="p-time">${timeStr}</span>` : ''}
+      ${ctx.getBadge(p)}
+      <button class="p-edit-btn" title="편집" onclick="event.stopPropagation();openPCtx('${p.id}',this)">⋯</button>
+    </div>`;
+  }).join('');
+
+  document.getElementById('p-body').innerHTML = head + rows;
+  const allChk = document.getElementById('pAllChk');
+  if (allChk) allChk.indeterminate = visible.size > 0 && !allOn;
+}
+
+function toggleAllParticipants(checked) {
+  visible.clear();
+  if (checked) PARTICIPANTS.forEach(p => visible.add(p.id));
+  resetPlayback(); renderTree(); renderParticipants(); renderProp(); render();
+}
+
+function toggleP(pid, checked) {
+  checked ? visible.add(pid) : visible.delete(pid);
+  resetPlayback(); renderTree(); renderParticipants(); renderProp(); render();
+}
+function selectP(pid) {
+  selPid = selPid === pid ? null : pid;
+  resetPlayback(); renderParticipants(); renderProp(); render();
+}
+
+// ════════════════════════════════════════
+// AOI 목록
+// ════════════════════════════════════════
+// ════════════════════════════════════════
+// 프로퍼티 패널
+// ════════════════════════════════════════
+// 현재 선택: { kind: 'doc'|'page'|'group'|'aoi', id }
+let propSel = { kind: 'doc', id: null };
+
+function row(key, val, cls='') {
+  return `<div class="prop-row"><span class="prop-key">${key}</span><span class="prop-val ${cls}">${val}</span></div>`;
+}
+function group(title, rows) {
+  return `<div class="prop-group"><div class="prop-group-title">${title}</div>${rows}</div>`;
+}
+
+function renderProp() {
+  const body = document.getElementById('propBody');
+  const label = document.getElementById('propLabel');
+  const vis = PARTICIPANTS.filter(p => visible.has(p.id));
+  let html = '';
+
+  if (propSel.kind === 'doc') {
+    label.textContent = '— 문서';
+    html += group('문서 정보', [
+      row('제목', '2025 PSAT 언어논리 5번'),
+      row('페이지 수', `${PAGES.length}페이지`),
+      row('전체 AOI', `${AOIS.length}개`),
+      row('제한 시간', `${PAGES.reduce((s,p)=>s+(p.timeLimit||0),0)}s`),
+    ].join(''));
+
+  } else if (propSel.kind === 'page') {
+    const p = PAGES.find(x => x.number === propSel.id);
+    if (!p) return;
+    label.textContent = `— ${p.label}`;
+    const pageAois = AOIS.filter(a => a.page === p.number);
+    html += group('페이지 정보', [
+      row('페이지 번호', `${p.number} / ${PAGES.length}`),
+      row('AOI 수', `${pageAois.length}개`),
+      row('제한 시간', p.timeLimit ? `${p.timeLimit}s` : '없음'),
+    ].join(''));
+
+  } else if (propSel.kind === 'group') {
+    const g = TREE_GROUPS.find(x => x.id === propSel.id);
+    if (!g) return;
+    label.textContent = `— ${g.name}`;
+    const gAois = g.aoiIds.map(aid=>aoiById(aid)).filter(Boolean);
+    html += group('그룹 정보', [
+      row('이름', g.name),
+      row('유형', g.type),
+      row('AOI 수', `${gAois.length}개`),
+    ].join(''));
+
+  } else if (propSel.kind === 'aoi') {
+    const a = aoiById(propSel.id);
+    if (!a) return;
+    label.textContent = `— ${a.name}`;
+    const pg = PAGES.find(p=>p.number===a.page);
+    html += group('AOI 정보', [
+      row('이름', a.name),
+      row('기호', `<span style="color:${a.color};font-weight:700">${a.symbol}</span>`),
+      row('유형', a.type),
+      row('색상', `<span class="prop-swatch" style="background:${a.color}"></span>${a.color}`),
+      row('소속 페이지', pg?pg.label:'–'),
+    ].join(''));
+  }
+
+  body.innerHTML = html || `<div class="prop-empty">항목을 선택하세요</div>`;
+}
+
+// ════════════════════════════════════════
+// 탭 전환 / 섹션 토글
+// ════════════════════════════════════════
+function switchTab(tab) {
+  curTab = tab;
+  const labels = { page:'시선경로', scarf:'이동경로', matrix:'AOI전이' };
+  document.querySelectorAll('.tab').forEach(el =>
+    el.classList.toggle('active', el.textContent.trim() === labels[tab]));
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  // 중앙 컨트롤(배율·응시/비짓)은 '시선경로'에서만 표시
+  document.getElementById('tabCenter').style.display = tab === 'page' ? 'flex' : 'none';
+  render();
+}
+function toggleSec(bodyId, togId) {
+  const el = document.getElementById(bodyId);
+  const tog = document.getElementById(togId);
+  const hide = el.style.display !== 'none';
+  el.style.display = hide ? 'none' : '';
+  tog.textContent = hide ? '▼' : '▲';
+}
+
+function render() {
+  if (curTab==='page')   { applyScale(); renderPage(); }
+  if (curTab==='scarf')  { renderScarf(); renderSim(); }
+  if (curTab==='matrix') renderMatrix();
+}
+
+// ════════════════════════════════════════
+// 페이지 탭
+// ════════════════════════════════════════
+function setViewMode(mode) {
+  viewMode = mode;
+  document.getElementById('vm-fix').classList.toggle('active', mode==='fixation');
+  document.getElementById('vm-visit').classList.toggle('active', mode==='visit');
+  renderPage();
+}
+
+// 현재 페이지에 표시할 fixation 추출 (모드별 시간 기준 적용)
+function pageFixes(pid) {
+  const all = FIXATIONS[pid].filter(f => f.page === curPage);
+  if (!all.length) return [];
+  const numbered = all.map((f, idx) => ({ ...f, n: idx + 1 }));
+  if (!isFinite(playTime)) return numbered;            // 전체 표시
+  if (visible.size === 1) return numbered.filter(f => f.t <= playTime);  // 단일: 절대시간
+  const entry = all[0].t;                              // 다중: 첫 진입 정렬(상대시간)
+  return numbered.map(f => ({ ...f, relT: f.t - entry })).filter(f => f.relT <= playTime);
+}
+// 현재 페이지에 표시할 visit 추출
+function pageVisits(pid) {
+  const all = SEQS[pid].filter(s => s.page === curPage);
+  if (!all.length) return [];
+  const numbered = all.map((s, idx) => ({ ...s, n: idx + 1 }));
+  if (!isFinite(playTime)) return numbered;
+  if (visible.size === 1) return numbered.filter(s => s.start <= playTime);
+  const entry = all[0].start;
+  return numbered.map(s => ({ ...s, relStart: s.start - entry })).filter(s => s.relStart <= playTime);
+}
+// 절대시각에 그 참여자가 보던 페이지
+function pageAtTime(pid, absT) {
+  const fs = FIXATIONS[pid];
+  let pg = fs[0].page;
+  for (const f of fs) { if (f.t <= absT) pg = f.page; else break; }
+  return pg;
+}
+
+function renderPage() {
+  const single  = visible.size === 1;
+  const showList = PARTICIPANTS.filter(p => visible.has(p.id));
+  const showAll = !isFinite(playTime);
+
+  // 단일 모드: 재생 시각에 따라 페이지 자동 전환
+  if (single && showList.length === 1 && isFinite(playTime)) {
+    const np = pageAtTime(showList[0].id, playTime);
+    if (np !== curPage) { curPage = np; renderTree(); renderParticipants(); }
+  }
+
+  const pageObj  = PAGES.find(p => p.number === curPage) || PAGES[0];
+  const pageAois = AOIS.filter(a => a.page === curPage);
+
+  let svg = `<svg width="100%" height="100%" viewBox="0 0 595 842"
+    xmlns="http://www.w3.org/2000/svg"
+    style="position:absolute;inset:0;pointer-events:none"><defs>`;
+  showList.forEach(p => {
+    const i = PARTICIPANTS.indexOf(p);
+    svg += `<marker id="arr${i}" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="${P_COLORS[i]}" opacity="0.8"/></marker>`;
+  });
+  svg += '</defs>';
+
+  // AOI 영역 (현재 페이지)
+  pageAois.forEach(a => {
+    const r = AOI_RECTS[a.id];
+    const isSelAoi = selAoiId === a.id;
+    svg += `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"
+      fill="${hex2rgba(a.color, isSelAoi?0.28:0.13)}" stroke="${a.color}"
+      stroke-width="${isSelAoi?3.5:1.5}" rx="2"/>`;
+    svg += `<text x="${r.x+r.w-5}" y="${r.y+13}" fill="${a.color}"
+      font-size="10" text-anchor="end" font-weight="bold" font-family="sans-serif"
+      opacity="${isSelAoi?1:0.75}">${a.name}(${a.symbol})</text>`;
+  });
+
+  // 참여자별 시선
+  showList.forEach(p => {
+    const i = PARTICIPANTS.indexOf(p);
+    const c = P_COLORS[i];
+    const isFocus = selPid === p.id;
+    const emph = single || isFocus;   // 선택된 1명은 더 굵게, 나머지도 그대로 표시
+    let g = `<g>`;
+
+    if (viewMode === 'fixation') {
+      const items = pageFixes(p.id);
+      if (items.length) {
+        const lw = emph ? 2.0 : 0.9, sw = emph ? 2.2 : 1.0, fop = emph ? 0.42 : 0.22;
+        for (let k = 0; k < items.length-1; k++) {
+          const f = items[k], t = items[k+1];
+          g += `<line x1="${f.x}" y1="${f.y}" x2="${t.x}" y2="${t.y}"
+            stroke="${c}" stroke-width="${lw}" stroke-opacity="0.5" marker-end="url(#arr${i})"/>`;
+        }
+        items.forEach((fx, k) => {
+          const isActive = !showAll && k === items.length - 1;
+          const rad = Math.max(4, Math.min(18, fx.dur * 7));
+          if (isActive) {
+            g += `<circle cx="${fx.x}" cy="${fx.y}" r="${rad+9}" fill="none" stroke="${c}" stroke-width="1.5" stroke-opacity="0.3"/>`;
+            g += `<circle cx="${fx.x}" cy="${fx.y}" r="${rad+4}" fill="none" stroke="${c}" stroke-width="1.5" stroke-opacity="0.55"/>`;
+          }
+          g += `<circle cx="${fx.x}" cy="${fx.y}" r="${isActive?rad+2:rad}"
+            fill="${c}" fill-opacity="${isActive?Math.min(0.7,fop*2):fop}"
+            stroke="${c}" stroke-width="${isActive?sw*2:sw}" stroke-opacity="0.9"/>`;
+          if (emph || isActive) {
+            g += `<text x="${fx.x}" y="${fx.y+3.5}" fill="${c}" font-size="7"
+              text-anchor="middle" font-family="sans-serif" font-weight="bold">${fx.n}</text>`;
+          }
+        });
+      }
+    } else {
+      const items = pageVisits(p.id);
+      if (items.length) {
+        const lw = emph ? 2.5 : 1.5, sw = emph ? 2.5 : 1.2;
+        const off = (i - showList.length/2) * 4;
+        const centers = items.map(s => {
+          const r = AOI_RECTS[s.aoiId];
+          return { x: r.x+r.w/2+off, y: r.y+r.h/2, dur: s.end-s.start, n: s.n };
+        });
+        for (let k = 0; k < centers.length-1; k++) {
+          const f = centers[k], t = centers[k+1];
+          g += `<line x1="${f.x}" y1="${f.y}" x2="${t.x}" y2="${t.y}"
+            stroke="${c}" stroke-width="${lw}" stroke-opacity="0.6" marker-end="url(#arr${i})"/>`;
+        }
+        centers.forEach((ct, k) => {
+          const isActive = !showAll && k === centers.length - 1;
+          const rad = Math.max(5, Math.min(16, ct.dur * 1.8));
+          if (isActive) g += `<circle cx="${ct.x}" cy="${ct.y}" r="${rad+8}" fill="none" stroke="${c}" stroke-width="1.5" stroke-opacity="0.3"/>`;
+          g += `<circle cx="${ct.x}" cy="${ct.y}" r="${isActive?rad+2:rad}"
+            fill="${c}" fill-opacity="${isActive?0.55:emph?0.38:0.25}"
+            stroke="${c}" stroke-width="${isActive?sw*2:sw}" stroke-opacity="0.9"/>`;
+          g += `<text x="${ct.x}" y="${ct.y+3.5}" fill="${c}" font-size="8"
+            text-anchor="middle" font-family="sans-serif" font-weight="bold">${ct.n}</text>`;
+        });
+      }
+    }
+    g += '</g>';
+    svg += g;
+  });
+  svg += '</svg>';
+
+  document.getElementById('pdfWrap').innerHTML = `
+    <div class="pdf-text">${pageObj.text}</div>
+    <div class="page-num-badge">페이지 ${curPage} / ${PAGES.length}</div>
+    ${svg}`;
+}
+
+// ════════════════════════════════════════
+// Scarf Diagram
+// ════════════════════════════════════════
+function renderScarf() {
+  const { label: scopeLabel, filterFn } = getScopeFilter();
+  document.getElementById('scarfScope').textContent = scopeLabel;
+
+  document.getElementById('scarfLegend').innerHTML =
+    AOIS.map(a => `<div class="legend-item">
+      <div class="legend-color" style="background:${a.color}"></div>
+      <span>${a.symbol} ${a.name}</span>
+    </div>`).join('');
+
+  const showList = PARTICIPANTS.filter(p => visible.has(p.id));
+
+  // 스코프 기준 세그먼트 + 시간 재정규화 (첫 세그 start=0 기준)
+  const scopedSegs = showList.map(p => {
+    const segs = filterFn(p.id);
+    if (!segs.length) return { p, segs: [], dur: 0 };
+    const t0 = segs[0].start;
+    const normalized = segs.map(s => ({ ...s, start: s.start - t0, end: s.end - t0 }));
+    return { p, segs: normalized, dur: normalized.at(-1).end };
+  });
+  const scopeMaxT = Math.max(1, ...scopedSegs.map(x => x.dur));
+
+  const ROW_H = 34, GAP = 6, LABEL_W = 100, TW = 680, AXIS_H = 28, PAD = 10;
+  const svgH = PAD + showList.length*(ROW_H+GAP) + AXIS_H + 10;
+  const svgW = LABEL_W + TW + 50;
+
+  let s = `<svg width="${svgW}" height="${svgH}" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif;display:block">`;
+
+  scopedSegs.forEach(({ p, segs, dur }, ri) => {
+    const y = PAD + ri*(ROW_H+GAP);
+    const pi = PARTICIPANTS.indexOf(p);
+    const pc = P_COLORS[pi];
+    const isSel = selPid === p.id;
+
+    if (isSel) {
+      s += `<rect x="0" y="${y-3}" width="${svgW}" height="${ROW_H+6}" fill="rgba(14,99,156,0.18)" rx="3"/>`;
+    }
+    s += `<text x="${LABEL_W-8}" y="${y+ROW_H/2+4}" fill="${pc}" font-size="11"
+      text-anchor="end" font-weight="600">${p.name}</text>`;
+
+    if (!segs.length) {
+      s += `<text x="${LABEL_W+TW/2}" y="${y+ROW_H/2+4}" fill="#444" font-size="10" text-anchor="middle">데이터 없음</text>`;
+    } else {
+      segs.forEach(seg => {
+        const aoi = aoiById(seg.aoiId);
+        const col = aoi ? aoi.color : '#555';
+        const x0 = LABEL_W + (seg.start/scopeMaxT)*TW;
+        const x1 = LABEL_W + (seg.end/scopeMaxT)*TW;
+        const bw = Math.max(x1-x0, 1);
+        s += `<rect x="${x0}" y="${y+3}" width="${bw}" height="${ROW_H-6}" fill="${col}" rx="2">
+          <title>${aoi?aoi.name:'영역 외'}: ${(seg.end-seg.start).toFixed(1)}s</title>
+        </rect>`;
+        if (bw > 16 && aoi) {
+          s += `<text x="${x0+bw/2}" y="${y+ROW_H/2+4}" fill="#fff" font-size="9"
+            text-anchor="middle" font-weight="bold" pointer-events="none">${aoi.symbol}</text>`;
+        }
+      });
+      const tx = LABEL_W + (dur/scopeMaxT)*TW + 4;
+      s += `<text x="${tx}" y="${y+ROW_H/2+4}" fill="#555" font-size="9">${dur.toFixed(0)}s</text>`;
+    }
+  });
+
+  const axY = PAD + showList.length*(ROW_H+GAP) + 4;
+  s += `<line x1="${LABEL_W}" y1="${axY}" x2="${LABEL_W+TW}" y2="${axY}" stroke="#444" stroke-width="1"/>`;
+  const step = scopeMaxT <= 20 ? 2 : scopeMaxT <= 60 ? 5 : 10;
+  for (let t=0; t<=scopeMaxT+0.01; t+=step) {
+    const x = LABEL_W + (t/scopeMaxT)*TW;
+    s += `<line x1="${x}" y1="${axY}" x2="${x}" y2="${axY+5}" stroke="#444" stroke-width="1"/>`;
+    s += `<text x="${x}" y="${axY+17}" fill="#666" font-size="10" text-anchor="middle">${t}s</text>`;
+  }
+  s += '</svg>';
+  document.getElementById('scarfSvgWrap').innerHTML = s;
+}
+
+// ════════════════════════════════════════
+// 참여자 편집 컨텍스트 메뉴
+// ════════════════════════════════════════
+const PALETTE = [
+  '#ff6b6b','#ff922b','#ffd93d','#a9e34b','#6bcb77','#20c997',
+  '#4d96ff','#748ffc','#cc5de8','#f783ac','#74c0fc','#adb5bd',
+];
+let ctxPid = null;
+
+function openPCtx(pid, btn) {
+  ctxPid = pid;
+  const p = PARTICIPANTS.find(x => x.id === pid);
+  const pi = PARTICIPANTS.indexOf(p);
+  const cur = P_COLORS[pi];
+
+  // 색상 스와치
+  document.getElementById('pCtxColors').innerHTML = PALETTE.map(c =>
+    `<div class="p-swatch${c===cur?' sel':''}" style="background:${c}"
+      onclick="selectSwatch(this,'${c}')"></div>`
+  ).join('');
+
+  document.getElementById('pCtxName').value = p.name;
+  document.getElementById('pCtxRef').checked = !!p.ref;
+
+  const menu = document.getElementById('pCtx');
+  menu.style.display = 'flex';
+
+  // 위치: 버튼 오른쪽, 뷰포트 내 유지
+  const r = btn.getBoundingClientRect();
+  let top = r.bottom + 4, left = r.right + 4;
+  if (left + 200 > window.innerWidth) left = r.left - 204;
+  if (top + 220 > window.innerHeight) top = r.top - 224;
+  menu.style.top  = top + 'px';
+  menu.style.left = left + 'px';
+}
+function selectSwatch(el, color) {
+  document.querySelectorAll('.p-swatch').forEach(s => s.classList.remove('sel'));
+  el.classList.add('sel');
+}
+function applyPCtx() {
+  if (!ctxPid) return;
+  const p  = PARTICIPANTS.find(x => x.id === ctxPid);
+  const pi = PARTICIPANTS.indexOf(p);
+  const selColor = document.querySelector('.p-swatch.sel')?.style.background;
+  if (selColor) P_COLORS[pi] = selColor;
+  const newName = document.getElementById('pCtxName').value.trim();
+  if (newName) p.name = newName;
+  p.ref = document.getElementById('pCtxRef').checked;
+  closePCtx();
+  renderParticipants(); renderProp(); render();
+}
+function closePCtx() {
+  document.getElementById('pCtx').style.display = 'none';
+  ctxPid = null;
+}
+document.addEventListener('mousedown', e => {
+  const menu = document.getElementById('pCtx');
+  if (menu && menu.style.display !== 'none' && !menu.contains(e.target)) closePCtx();
+});
+
+// ════════════════════════════════════════
+// 유사도 매트릭스 (이동경로 탭 우측)
+// ════════════════════════════════════════
+let simAlgo = 'levenshtein';
+function setSimAlgo(btn) {
+  simAlgo = btn.dataset.algo;
+  document.querySelectorAll('.algo-btn').forEach(b => b.classList.toggle('active', b === btn));
+  renderSim();
+}
+
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({length:m+1}, (_,i) => Array.from({length:n+1}, (_,j) => i||j ? (i?i:j) : 0));
+  for (let i=1;i<=m;i++) for (let j=1;j<=n;j++)
+    dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[m][n];
+}
+function lcsLength(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({length:m+1}, () => new Int32Array(n+1));
+  for (let i=1;i<=m;i++) for (let j=1;j<=n;j++)
+    dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1]+1 : Math.max(dp[i-1][j], dp[i][j-1]);
+  return dp[m][n];
+}
+function bigramJaccard(a, b) {
+  const bg = s => { const st = new Set(); for (let i=0;i<s.length-1;i++) st.add(s[i]+s[i+1]); return st; };
+  const A = bg(a), B = bg(b);
+  if (!A.size && !B.size) return { raw: 0, norm: 1 };
+  let inter = 0; A.forEach(x => { if (B.has(x)) inter++; });
+  const union = A.size + B.size - inter;
+  return { raw: inter, norm: union ? inter/union : 0 };
+}
+
+// 현재 트리 선택 기준 데이터 범위 필터
+function getScopeFilter() {
+  if (curTreeTab === 'page') {
+    if (propSel.kind === 'page') {
+      const n = propSel.id;
+      return { label: `${n}페이지`, filterFn: pid => SEQS[pid].filter(s => s.page === n) };
+    }
+    if (propSel.kind === 'aoi') {
+      const a = aoiById(propSel.id);
+      return { label: a ? `AOI: ${a.name}` : 'AOI', filterFn: pid => SEQS[pid].filter(s => s.aoiId === propSel.id) };
+    }
+  } else if (curTreeTab === 'group') {
+    if (propSel.kind === 'group') {
+      const g = TREE_GROUPS.find(x => x.id === propSel.id);
+      return { label: g ? `그룹: ${g.name}` : '그룹', filterFn: pid => SEQS[pid].filter(s => g?.aoiIds.includes(s.aoiId)) };
+    }
+    if (propSel.kind === 'aoi') {
+      const a = aoiById(propSel.id);
+      return { label: a ? `AOI: ${a.name}` : 'AOI', filterFn: pid => SEQS[pid].filter(s => s.aoiId === propSel.id) };
+    }
+  }
+  return { label: '문서 전체', filterFn: pid => SEQS[pid] };
+}
+
+// 참여자의 AOI visit 경로를 기호 문자열로 (체류시간 무시)
+function visitStr(pid, segs) {
+  const s = segs || SEQS[pid];
+  return s.map(s => aoiById(s.aoiId)?.symbol || '?').join('');
+}
+
+function simScore(algo, a, b) {
+  const maxLen = Math.max(a.length, b.length, 1);
+  if (algo === 'levenshtein') {
+    const d = levenshtein(a, b);
+    return { raw: d, norm: 1 - d/maxLen, rawLabel: `거리 ${d}`, lowerIsBetter: true };
+  }
+  if (algo === 'lcs') {
+    const l = lcsLength(a, b);
+    return { raw: l, norm: l/maxLen, rawLabel: `공통 ${l}`, lowerIsBetter: false };
+  }
+  if (algo === 'bigram') {
+    const r = bigramJaccard(a, b);
+    return { raw: r.raw, norm: r.norm, rawLabel: `${r.raw}쌍`, lowerIsBetter: false };
+  }
+  return { raw: 0, norm: 0, rawLabel: '–', lowerIsBetter: false };
+}
+
+const ALGOS = [
+  { key:'levenshtein', label:'Levenshtein' },
+  { key:'lcs',         label:'LCS'         },
+  { key:'bigram',      label:'Bigram'       },
+];
+
+function renderSim() {
+  const algo = simAlgo;
+  const list = PARTICIPANTS.filter(p => visible.has(p.id));
+  if (list.length < 2) {
+    document.getElementById('simBody').innerHTML =
+      `<div style="color:#555;font-size:12px;padding:20px">참여자를 2명 이상 선택하세요.</div>`;
+    document.getElementById('simHint').textContent = '';
+    return;
+  }
+
+  const { filterFn } = getScopeFilter();
+  const strs = Object.fromEntries(list.map(p => [p.id, visitStr(p.id, filterFn(p.id))]));
+
+  // ── 전체 유사도 행렬 (현재 선택 알고리듬) ──
+  const scores = {};
+  list.forEach(a => { scores[a.id] = {}; list.forEach(b => {
+    scores[a.id][b.id] = a.id===b.id ? null : simScore(algo, strs[a.id], strs[b.id]);
+  }); });
+  const norms = list.flatMap(a => list.filter(b=>b.id!==a.id).map(b=>scores[a.id][b.id].norm));
+  const maxN = Math.max(...norms,0), minN = Math.min(...norms,0);
+  const range = maxN - minN || 1;
+  const cellBg = norm => {
+    const t = (norm - minN) / range;
+    return `rgb(${Math.round(20+(14-20)*t)},${Math.round(20+(80-20)*t)},${Math.round(20+(156-20)*t)})`;
+  };
+  const cellFg = norm => (norm - minN) / range > 0.5 ? '#e0e0e0' : '#888';
+
+  let html = `<table class="sim-mx"><thead><tr>
+    <th class="row-head">참여자</th>
+    ${list.map(p => { const pi=PARTICIPANTS.indexOf(p);
+      return `<th><span class="p-dot-s" style="background:${P_COLORS[pi]}"></span>${p.name.replace('참여자 ','P')}</th>`;
+    }).join('')}
+  </tr></thead><tbody>`;
+  list.forEach(a => {
+    const pai = PARTICIPANTS.indexOf(a);
+    html += `<tr><th class="row-head"><span class="p-dot-s" style="background:${P_COLORS[pai]}"></span>${a.name}${a.ref?' ★':''}</th>`;
+    list.forEach(b => {
+      if (a.id===b.id) { html += `<td class="diag" title="${strs[a.id]}">—</td>`; }
+      else {
+        const sc=scores[a.id][b.id];
+        html += `<td style="background:${cellBg(sc.norm)};color:${cellFg(sc.norm)}"
+          title="${a.name}: ${strs[a.id]}\n${b.name}: ${strs[b.id]}">
+          <div style="font-size:12px;font-weight:600">${sc.rawLabel}</div>
+          <div style="font-size:9px;opacity:.75">${(sc.norm*100).toFixed(0)}%</div></td>`;
+      }
+    });
+    html += `</tr>`;
+  });
+  html += `</tbody></table>`;
+
+  // ── 기준시선별 비교표 (알고리듬 × 참여자) ──
+  const refs = list.filter(p => p.ref);
+  refs.forEach(ref => {
+    const others = list.filter(p => p.id !== ref.id);
+    const ri = PARTICIPANTS.indexOf(ref);
+
+    // 각 알고리듬 × 각 참여자 norm(0~1) 계산
+    const algoNorms = {};
+    ALGOS.forEach(ag => {
+      algoNorms[ag.key] = Object.fromEntries(
+        others.map(p => [p.id, simScore(ag.key, strs[ref.id], strs[p.id]).norm])
+      );
+    });
+    // 평균 per 참여자
+    const avgNorm = Object.fromEntries(others.map(p => [p.id,
+      ALGOS.reduce((s,ag) => s + algoNorms[ag.key][p.id], 0) / ALGOS.length
+    ]));
+
+    // 색상: 이 표 내 전체 값 기준으로 min/max
+    const allVals = [...ALGOS.flatMap(ag => others.map(p => algoNorms[ag.key][p.id])),
+                     ...others.map(p => avgNorm[p.id])];
+    const rMin = Math.min(...allVals), rMax = Math.max(...allVals), rRange = rMax-rMin||1;
+    const rBg = v => {
+      const t = (v-rMin)/rRange;
+      return `rgb(${Math.round(20+(14-20)*t)},${Math.round(20+(80-20)*t)},${Math.round(20+(156-20)*t)})`;
+    };
+    const rFg = v => (v-rMin)/rRange > 0.5 ? '#e0e0e0' : '#888';
+
+    html += `<div class="ref-block">
+      <div class="ref-block-title">
+        <span class="p-dot-s" style="background:${P_COLORS[ri]}"></span>
+        기준시선: ${ref.name} <span class="ref-star-s">★</span>
+        <span style="font-size:10px;color:#555;font-weight:400;margin-left:4px">경로: ${strs[ref.id]}</span>
+      </div>
+      <table class="ref-mx"><thead><tr>
+        <th class="row-head">알고리듬</th>
+        ${others.map(p => { const pi=PARTICIPANTS.indexOf(p);
+          return `<th><span class="p-dot-s" style="background:${P_COLORS[pi]}"></span>${p.name.replace('참여자 ','P')}</th>`;
+        }).join('')}
+      </tr></thead><tbody>`;
+
+    ALGOS.forEach(ag => {
+      html += `<tr><th class="row-head" style="font-weight:500;color:#999">${ag.label}</th>`;
+      others.forEach(p => {
+        const v = algoNorms[ag.key][p.id];
+        html += `<td style="background:${rBg(v)};color:${rFg(v)}">${(v*100).toFixed(0)}%</td>`;
+      });
+      html += `</tr>`;
+    });
+
+    // 평균 행
+    html += `<tr class="avg-tr"><th class="row-head" style="color:#ccc">평균</th>`;
+    others.forEach(p => {
+      const v = avgNorm[p.id];
+      html += `<td class="avg-row" style="background:${rBg(v)};color:${rFg(v)}">${(v*100).toFixed(0)}%</td>`;
+    });
+    html += `</tr></tbody></table></div>`;
+  });
+
+  if (!refs.length) {
+    html += `<div style="color:#444;font-size:11px;padding:14px 0">
+      기준시선(★)으로 설정된 참여자가 없습니다. ⋯ 메뉴에서 지정하세요.</div>`;
+  }
+
+  document.getElementById('simBody').innerHTML = html;
+  const hints = {
+    levenshtein: '편집거리 / 정규화(%) — 거리 작을수록 유사',
+    lcs:         '최장공통부분수열 길이 / 정규화(%) — 클수록 유사',
+    bigram:      '공통 전환쌍 수(Jaccard) / 유사도(%) — 클수록 유사',
+  };
+  document.getElementById('simHint').textContent = hints[algo] || '';
+}
+
+// ════════════════════════════════════════
+// 전이 매트릭스
+// ════════════════════════════════════════
+function renderMatrix() {
+  const { label: scopeLabel, filterFn } = getScopeFilter();
+  document.getElementById('matrixScope').textContent = scopeLabel;
+
+  const showList = PARTICIPANTS.filter(p => visible.has(p.id));
+  const cnt = {}, rowSum = {};
+  AOIS.forEach(a => { cnt[a.id] = {}; rowSum[a.id] = 0; AOIS.forEach(b => { cnt[a.id][b.id] = 0; }); });
+  showList.forEach(p => {
+    const seq = filterFn(p.id);
+    for (let i=0; i<seq.length-1; i++) {
+      const fr = seq[i].aoiId, to = seq[i+1].aoiId;
+      if (cnt[fr]?.[to] !== undefined) { cnt[fr][to]++; rowSum[fr]++; }
+    }
+  });
+  const maxV = Math.max(1, ...AOIS.flatMap(a => AOIS.filter(b=>b.id!==a.id).map(b=>cnt[a.id][b.id])));
+
+  let html = `<table class="mx"><thead><tr>
+    <th style="min-width:100px;text-align:left;padding:6px 10px">FROM \\ TO</th>
+    ${AOIS.map(a=>`<th style="color:${a.color}">${a.symbol}<br>
+      <span style="font-size:9px;color:#555;font-weight:400">${a.name}</span></th>`).join('')}
+    <th style="color:#666">합계</th>
+  </tr></thead><tbody>`;
+
+  AOIS.forEach(fa => {
+    html += `<tr><td style="text-align:left;padding:5px 10px;background:#252525;color:${fa.color};white-space:nowrap;font-size:12px">${fa.symbol} ${fa.name}</td>`;
+    AOIS.forEach(ta => {
+      const v = cnt[fa.id][ta.id];
+      const pct = rowSum[fa.id] > 0 ? v/rowSum[fa.id]*100 : 0;
+      const isDiag = fa.id === ta.id;
+      let bg = '#1e1e1e';
+      if (!isDiag && v > 0) bg = hex2rgba(ta.color, 0.12 + (v/maxV)*0.55);
+      html += `<td style="background:${isDiag?'#282828':bg}">
+        <div class="cell-inner">
+          <span class="cell-cnt" style="color:${isDiag?'#3c3c3c':v>0?'#e0e0e0':'#3c3c3c'}">${isDiag?'—':v}</span>
+          ${!isDiag&&v>0?`<span class="cell-pct">${pct.toFixed(0)}%</span>`:''}
+        </div></td>`;
+    });
+    html += `<td style="background:#252525"><div class="cell-inner"><span style="color:#777;font-size:12px">${rowSum[fa.id]}</span></div></td></tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('matrixWrap').innerHTML = html;
+}
+
+// ════════════════════════════════════════
+// 리사이즈
+// ════════════════════════════════════════
+// 재생
+// ════════════════════════════════════════
+let playTime = Infinity;   // Infinity = show all
+let isPlaying = false;
+let rafId = null;
+let lastRafTs = null;
+let playTotalTime = MAX_T;
+
+function fmtTime(s) {
+  if (!isFinite(s)) s = playTotalTime;
+  const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+  return `${m}:${String(sec).padStart(2,'0')}`;
+}
+function getPlayTotalTime() {
+  const list = PARTICIPANTS.filter(p => visible.has(p.id));
+  if (!list.length) return 1;
+  if (list.length === 1) {
+    // 단일: 전체(여러 페이지) 시간
+    const f = FIXATIONS[list[0].id];
+    return f.length ? f.at(-1).t + f.at(-1).dur : 1;
+  }
+  // 다중: 현재 페이지 기준 상대 최대 시간 (첫 진입 정렬)
+  let maxRel = 0;
+  list.forEach(p => {
+    const all = FIXATIONS[p.id].filter(f => f.page === curPage);
+    if (all.length) {
+      const entry = all[0].t, last = all.at(-1);
+      maxRel = Math.max(maxRel, last.t + last.dur - entry);
+    }
+  });
+  return maxRel || 1;
+}
+function updateModeLabel() {
+  const el = document.getElementById('modeLabel');
+  if (!el) return;
+  if (visible.size === 1) {
+    el.innerHTML = `🔴 <b style="color:#ff8585">리플레이</b> · 시간순 (페이지 자동전환)`;
+  } else if (visible.size >= 2) {
+    el.innerHTML = `📄 <b style="color:#7abaff">페이지 비교</b> · 첫 진입 정렬 (P.${curPage})`;
+  } else {
+    el.innerHTML = `<span style="color:#555">참여자를 선택하세요</span>`;
+  }
+}
+function updatePlayUI() {
+  const t = isFinite(playTime) ? playTime : playTotalTime;
+  const pct = playTotalTime > 0 ? Math.min(1, t / playTotalTime) * 100 : 0;
+  document.getElementById('pbFill').style.width  = pct + '%';
+  document.getElementById('pbThumb').style.left  = pct + '%';
+  document.getElementById('timeCur').textContent = fmtTime(t);
+  document.getElementById('timeTot').textContent = fmtTime(playTotalTime);
+}
+function initPlayback() {
+  playTotalTime = getPlayTotalTime();
+  playTime = Infinity;
+  updatePlayUI();
+  updateModeLabel();
+}
+function resetPlayback() {
+  if (isPlaying) pausePlay();
+  playTotalTime = getPlayTotalTime();
+  playTime = Infinity;
+  updatePlayUI();
+  updateModeLabel();
+}
+function togglePlay() {
+  isPlaying ? pausePlay() : startPlay();
+}
+function startPlay() {
+  if (!isFinite(playTime) || playTime >= playTotalTime) playTime = 0;
+  isPlaying = true;
+  lastRafTs = null;
+  document.getElementById('playBtn').textContent = '⏸';
+  rafId = requestAnimationFrame(playFrame);
+}
+function pausePlay() {
+  isPlaying = false;
+  document.getElementById('playBtn').textContent = '▶';
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+}
+function playFrame(ts) {
+  if (!isPlaying) return;
+  if (lastRafTs !== null) {
+    playTime += (ts - lastRafTs) / 1000;
+    if (playTime >= playTotalTime) { playTime = Infinity; pausePlay(); }
+  }
+  lastRafTs = ts;
+  updatePlayUI();
+  renderPage();
+  if (isPlaying) rafId = requestAnimationFrame(playFrame);
+}
+function seekTo(frac) {
+  const wasPlaying = isPlaying;
+  if (isPlaying) pausePlay();
+  playTime = Math.max(0, Math.min(playTotalTime, frac * playTotalTime));
+  lastRafTs = null;
+  updatePlayUI();
+  renderPage();
+  if (wasPlaying && playTime < playTotalTime) startPlay();
+}
+function initPbDrag() {
+  const wrap = document.getElementById('pbWrap');
+  const thumb = document.getElementById('pbThumb');
+  const fracFromE = e => {
+    const r = wrap.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+  };
+  wrap.addEventListener('click', e => { if (e.target !== thumb) seekTo(fracFromE(e)); });
+  thumb.addEventListener('mousedown', e => {
+    const move = e2 => seekTo(fracFromE(e2));
+    const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+    e.stopPropagation(); e.preventDefault();
+  });
+}
+
+// ════════════════════════════════════════
+const SIDEBAR_MIN = 160, SIDEBAR_MAX = 420;
+const PANE_MIN    = 60;
+
+function makeDrag(handle, isHoriz, onDelta) {
+  handle.addEventListener('mousedown', e => {
+    let last = isHoriz ? e.clientX : e.clientY;
+    const cls = isHoriz ? 'resizing-h' : 'resizing-v';
+    handle.classList.add('dragging');
+    document.body.classList.add(cls);
+    const move = e2 => {
+      const cur = isHoriz ? e2.clientX : e2.clientY;
+      onDelta(cur - last);
+      last = cur;
+    };
+    const up = () => {
+      handle.classList.remove('dragging');
+      document.body.classList.remove(cls);
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+    e.preventDefault();
+  });
+}
+
+function initResize() {
+  const sidebar  = document.getElementById('leftPanel');
+  const treeSec  = document.getElementById('treeSection');
+  const partSec  = document.getElementById('partSection');
+
+  // 초기 높이: 전체 가용 높이의 4:3:3
+  const applyPanelRatio = () => {
+    const handles = 2 * 5; // ph1 + ph2 각 5px
+    const headers = sidebar.querySelectorAll('.sec-header,.tree-header,.tree-tab-bar');
+    let headerH = 0; headers.forEach(el => { headerH += el.offsetHeight; });
+    const avail = sidebar.offsetHeight - handles - headerH;
+    treeSec.style.height = Math.max(PANE_MIN, Math.round(avail * 4/10)) + 'px';
+    partSec.style.height = Math.max(PANE_MIN, Math.round(avail * 4/10)) + 'px';
+  };
+  // 레이아웃 완료 후 적용
+  requestAnimationFrame(applyPanelRatio);
+
+  // 사이드바 좌우
+  makeDrag(document.getElementById('sidebarResize'), true, delta => {
+    const w = Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, sidebar.offsetWidth + delta));
+    sidebar.style.width = w + 'px';
+  });
+
+  // 트리 ↔ 참여자
+  makeDrag(document.getElementById('ph1'), false, delta => {
+    const h = Math.max(PANE_MIN, treeSec.offsetHeight + delta);
+    treeSec.style.height = h + 'px';
+  });
+
+  // 참여자 ↔ 프로퍼티
+  makeDrag(document.getElementById('ph2'), false, delta => {
+    const h = Math.max(PANE_MIN, partSec.offsetHeight + delta);
+    partSec.style.height = h + 'px';
+  });
+}
+
+// ════════════════════════════════════════
+// 초기화
+// ════════════════════════════════════════
+// scarf 좌우 분할 드래그
+function initScarfDivider() {
+  const div = document.getElementById('scarfDivider');
+  const left = document.querySelector('.scarf-left');
+  if (!div || !left) return;
+  div.addEventListener('mousedown', e => {
+    e.preventDefault();
+    div.classList.add('dragging');
+    document.body.classList.add('resizing-h');
+    const move = e2 => {
+      const wrap = div.parentElement.getBoundingClientRect();
+      const newW = Math.max(200, Math.min(wrap.width * 0.8, e2.clientX - wrap.left));
+      left.style.width = newW + 'px';
+    };
+    const up = () => {
+      div.classList.remove('dragging');
+      document.body.classList.remove('resizing-h');
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  });
+}
+
+// export
+function exportCurrent() {
+  if (curTab === 'page') {
+    const svg = document.querySelector('#pdfWrap svg');
+    if (!svg) return;
+    const blob = new Blob([svg.outerHTML], {type:'image/svg+xml'});
+    const a = Object.assign(document.createElement('a'), {href:URL.createObjectURL(blob), download:`gaze_p${curPage}.svg`});
+    a.click();
+  } else if (curTab === 'scarf') {
+    const svg = document.querySelector('#scarfSvgWrap svg');
+    if (!svg) return;
+    const blob = new Blob([svg.outerHTML], {type:'image/svg+xml'});
+    const a = Object.assign(document.createElement('a'), {href:URL.createObjectURL(blob), download:'scarf.svg'});
+    a.click();
+  } else if (curTab === 'matrix') {
+    const table = document.querySelector('#matrixWrap table');
+    if (!table) return;
+    const blob = new Blob([table.outerHTML], {type:'text/html'});
+    const a = Object.assign(document.createElement('a'), {href:URL.createObjectURL(blob), download:'transition_matrix.html'});
+    a.click();
+  }
+}
+
+initResize();
+initScarfDivider();
+initPlayback();
+initPbDrag();
+renderTree();
+renderParticipants();
+renderProp();
+render();
+</script>
+</body>
+</html>
