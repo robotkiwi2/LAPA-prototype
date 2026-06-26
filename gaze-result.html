@@ -436,15 +436,16 @@ const AOI_RECTS = {
 
 // ── 참여자 AOI 방문 시퀀스 [aoiId, 초].  page는 aoiId에서 파생 ──
 // P1은 요청대로 1→2→1→2 페이지 왕복
+// null = AOI 외부 구간 (시선이 정의된 AOI 바깥에 있던 시간)
 const RAW = {
   P1:[['A',8],['B',4], ['C',2],['D',2],['E',2],['F',3], ['A',5],['B',3], ['F',2],['G',2]],
-  P2:[['A',10],['B',4], ['C',3],['D',2],['E',2],['F',4],['G',2]],
-  P3:[['B',3],['A',12], ['D',3],['F',5],['E',2]],
-  P4:[['A',7],['B',3], ['C',2],['D',2],['E',2],['G',2], ['A',4],['B',2]],
+  P2:[['A',10],[null,2],['B',4], ['C',3],['D',2],['E',2],['F',4],['G',2]],
+  P3:[['B',3],['A',12], ['D',3],[null,3.5],['F',5],['E',2]],
+  P4:[['A',7],['B',3], ['C',2],['D',2],[null,1.5],['E',2],['G',2], ['A',4],['B',2]],
   P5:[['A',9],['B',4], ['C',3],['D',3],['E',3],['F',3]],
   P6:[['A',6],['B',3], ['C',4],['D',2],['F',3],['G',3]],
-  P7:[['A',11],['B',3], ['F',4], ['A',3], ['E',2]],
-  P8:[['B',2],['A',8], ['C',3],['D',3],['G',4],['F',2]],
+  P7:[['A',11],[null,4],['B',3], ['F',4], ['A',3], ['E',2]],
+  P8:[['B',2],['A',8], ['C',3],[null,2],['D',3],['G',4],['F',2]],
 };
 
 const PARTICIPANTS = [
@@ -460,11 +461,13 @@ const PARTICIPANTS = [
 
 const P_COLORS = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff922b','#cc5de8','#20c997','#a9e34b'];
 
-// visit 시퀀스: 각 seg에 page + 절대 start/end
+// visit 시퀀스: 각 seg에 page + 절대 start/end (aoiId=null은 AOI 외부 구간)
 function buildSeq(pid) {
   let t = 0;
+  let lastPage = 1;
   return RAW[pid].map(([aoiId, dur]) => {
-    const seg = { aoiId, page: aoiById(aoiId).page, start:t, end:t+dur };
+    if (aoiId !== null) lastPage = aoiById(aoiId).page;
+    const seg = { aoiId, page: lastPage, start:t, end:t+dur };
     t += dur;
     return seg;
   });
@@ -483,22 +486,32 @@ function buildFixations() {
     const [bx, by] = BIASES[pi];
     const fixes = [];
     let cumT = 0;
+    let lastPage = 1;
     RAW[p.id].forEach(([aoiId, totalDur]) => {
-      const a = aoiById(aoiId);
-      const r = AOI_RECTS[aoiId];
+      const a = aoiId !== null ? aoiById(aoiId) : null;
+      if (a) lastPage = a.page;
+      const r = aoiId !== null ? AOI_RECTS[aoiId] : null;
       const n = Math.max(2, Math.round(totalDur / 0.25));
       const perDur = totalDur / n;
       for (let i = 0; i < n; i++) {
-        const xFrac = (i + 0.5 + (rnd() - 0.5) * 0.5) / n;
-        const yFrac = 0.15 + rnd() * 0.7;
-        const rx = r.x + 12 + xFrac * (r.w - 24) + bx * 0.4;
-        const ry = r.y + 3  + yFrac * (r.h - 6)  + by;
+        let fx, fy;
+        if (r) {
+          const xFrac = (i + 0.5 + (rnd() - 0.5) * 0.5) / n;
+          const yFrac = 0.15 + rnd() * 0.7;
+          fx = Math.max(r.x + 4, Math.min(r.x + r.w - 4, Math.round(r.x + 12 + xFrac * (r.w - 24) + bx * 0.4)));
+          fy = Math.max(r.y + 3, Math.min(r.y + r.h - 3, Math.round(r.y + 3 + yFrac * (r.h - 6) + by)));
+        } else {
+          // AOI 외부: 페이지 여백 영역에 임의 배치
+          fx = Math.round(20 + rnd() * 555);
+          fy = lastPage === 1
+            ? Math.round(420 + rnd() * 15)   // p1: A~B 사이 여백
+            : Math.round(540 + rnd() * 60);   // p2: G 아래 여백
+        }
         fixes.push({
-          x: Math.max(r.x + 4, Math.min(r.x + r.w - 4, Math.round(rx))),
-          y: Math.max(r.y + 3, Math.min(r.y + r.h - 3, Math.round(ry))),
+          x: fx, y: fy,
           dur: Math.round(perDur * 100) / 100,
           t: Math.round((cumT + i * perDur) * 1000) / 1000,
-          page: a.page,
+          page: lastPage,
           aoiId
         });
       }
@@ -1079,7 +1092,11 @@ function renderScarf() {
     AOIS.map(a => `<div class="legend-item">
       <div class="legend-color" style="background:${a.color}"></div>
       <span>${a.symbol} ${a.name}</span>
-    </div>`).join('');
+    </div>`).join('') +
+    `<div class="legend-item">
+      <svg width="16" height="10"><line x1="0" y1="5" x2="16" y2="5" stroke="#777" stroke-width="1.5" stroke-dasharray="3,2"/></svg>
+      <span style="color:#888">AOI 외부</span>
+    </div>`;
 
   const showList = PARTICIPANTS.filter(p => visible.has(p.id));
 
@@ -1115,17 +1132,25 @@ function renderScarf() {
       s += `<text x="${LABEL_W+TW/2}" y="${y+ROW_H/2+4}" fill="#444" font-size="10" text-anchor="middle">데이터 없음</text>`;
     } else {
       segs.forEach(seg => {
-        const aoi = aoiById(seg.aoiId);
-        const col = aoi ? aoi.color : '#555';
+        const aoi = seg.aoiId !== null ? aoiById(seg.aoiId) : null;
         const x0 = LABEL_W + (seg.start/scopeMaxT)*TW;
         const x1 = LABEL_W + (seg.end/scopeMaxT)*TW;
         const bw = Math.max(x1-x0, 1);
-        s += `<rect x="${x0}" y="${y+3}" width="${bw}" height="${ROW_H-6}" fill="${col}" rx="2">
-          <title>${aoi?aoi.name:'영역 외'}: ${(seg.end-seg.start).toFixed(1)}s</title>
-        </rect>`;
-        if (bw > 16 && aoi) {
-          s += `<text x="${x0+bw/2}" y="${y+ROW_H/2+4}" fill="#fff" font-size="9"
-            text-anchor="middle" font-weight="bold" pointer-events="none">${aoi.symbol}</text>`;
+        if (!aoi) {
+          // AOI 외부 구간 → 행 중앙에 점선
+          const cy = y + ROW_H / 2;
+          s += `<line x1="${x0}" y1="${cy}" x2="${x0+bw}" y2="${cy}"
+            stroke="#666" stroke-width="1.5" stroke-dasharray="3,2">
+            <title>AOI 외부: ${(seg.end-seg.start).toFixed(1)}s</title>
+          </line>`;
+        } else {
+          s += `<rect x="${x0}" y="${y+3}" width="${bw}" height="${ROW_H-6}" fill="${aoi.color}" rx="2">
+            <title>${aoi.name}: ${(seg.end-seg.start).toFixed(1)}s</title>
+          </rect>`;
+          if (bw > 16) {
+            s += `<text x="${x0+bw/2}" y="${y+ROW_H/2+4}" fill="#fff" font-size="9"
+              text-anchor="middle" font-weight="bold" pointer-events="none">${aoi.symbol}</text>`;
+          }
         }
       });
       const tx = LABEL_W + (dur/scopeMaxT)*TW + 4;
