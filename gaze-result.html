@@ -182,6 +182,11 @@ body{font-family:'Segoe UI',sans-serif;font-size:13px;background:#1e1e1e;color:#
 .legend-color{width:16px;height:10px;border-radius:2px}
 .legend-group{font-size:9px;padding:1px 4px;border-radius:3px;background:#2a3a4a;color:#6ab0d0;font-weight:700;letter-spacing:.03em}
 .legend-type{font-size:9px;color:#666;padding-left:2px}
+/* 이벤트 타임라인 */
+.event-scarf-header{display:flex;align-items:center;gap:12px;padding-top:14px;margin-top:4px;border-top:1px solid #2a2a2a;flex-shrink:0}
+.event-scarf-title{font-size:10px;color:#555;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.event-legend{display:flex;gap:10px;flex-wrap:wrap}
+.ev-legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:#888}
 
 /* 매트릭스 */
 .matrix-wrap{flex:1;overflow:auto;padding:20px 24px;display:flex;flex-direction:column;gap:14px}
@@ -348,6 +353,11 @@ input[type=number]::-webkit-inner-spin-button{opacity:.4}
           <div class="scope-badge" id="scarfScope"></div>
           <div class="legend" id="scarfLegend"></div>
           <div id="scarfSvgWrap"></div>
+          <div class="event-scarf-header">
+            <span class="event-scarf-title">이벤트 타임라인</span>
+            <span class="event-legend" id="eventLegend"></span>
+          </div>
+          <div id="eventSvgWrap"></div>
         </div>
         <div class="scarf-divider" id="scarfDivider"></div>
         <!-- 우: 유사도 매트릭스 -->
@@ -467,6 +477,28 @@ const PARTICIPANTS = [
 ];
 
 const P_COLORS = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff922b','#cc5de8','#20c997','#a9e34b'];
+
+// ── 이벤트 타입 정의 ──
+const EVENT_TYPES = {
+  page_turn:   { color:'#f5a623', label:'페이지 이동',  shape:'tri'     },
+  answer_sel:  { color:'#4d96ff', label:'선택지 클릭',  shape:'circle'  },
+  answer_conf: { color:'#6bcb77', label:'답안 확정',    shape:'diamond' },
+};
+
+// ── 샘플 이벤트 (실제 측정 시 기록된 상호작용 이벤트) ──
+// 페이지 전환은 RAW 시퀀스에서 자동 계산; 클릭 이벤트만 여기 정의
+const CLICK_EVENTS = {
+  P1:[{ t:18,   type:'answer_sel',  label:'④ 클릭' }, { t:29,   type:'answer_conf', label:'④ 확정' }],
+  P2:[{ t:21,   type:'answer_sel',  label:'④ 클릭' }, { t:25,   type:'answer_conf', label:'④ 확정' }],
+  P3:[{ t:21.5, type:'answer_sel',  label:'④ 클릭' }, { t:26.5, type:'answer_conf', label:'④ 확정' }],
+  P4:[{ t:12,   type:'answer_sel',  label:'② 클릭' }, { t:15.5, type:'answer_sel',  label:'③ 클릭' },
+      { t:23.5, type:'answer_conf', label:'③ 확정' }],
+  P5:[{ t:18,   type:'answer_sel',  label:'④ 클릭' }, { t:25,   type:'answer_conf', label:'④ 확정' }],
+  P6:[{ t:15,   type:'answer_sel',  label:'④ 클릭' }, { t:18,   type:'answer_conf', label:'④ 확정' }],
+  P7:[{ t:20,   type:'answer_sel',  label:'④ 클릭' }, { t:23,   type:'answer_conf', label:'④ 확정' }],
+  P8:[{ t:13,   type:'answer_sel',  label:'② 클릭' }, { t:18,   type:'answer_sel',  label:'⑤ 클릭' },
+      { t:22,   type:'answer_conf', label:'⑤ 확정' }],
+};
 
 // visit 시퀀스: 각 seg에 page + 절대 start/end (aoiId=null은 AOI 외부 구간)
 function buildSeq(pid) {
@@ -695,7 +727,7 @@ function toggleGroupExpand(id) {
 
 function renderCurrentTab() {
   if (curTab === 'page')   { resetPlayback(); renderPage(); }
-  if (curTab === 'scarf')  { renderScarf(); renderSim(); }
+  if (curTab === 'scarf')  { renderScarf(); renderEventScarf(); renderSim(); }
   if (curTab === 'matrix') { renderMatrix(); }
 }
 
@@ -940,7 +972,7 @@ function toggleSec(bodyId, togId) {
 
 function render() {
   if (curTab==='page')   { applyScale(); renderPage(); }
-  if (curTab==='scarf')  { renderScarf(); renderSim(); }
+  if (curTab==='scarf')  { renderScarf(); renderEventScarf(); renderSim(); }
   if (curTab==='matrix') renderMatrix();
 }
 
@@ -1189,6 +1221,93 @@ function renderScarf() {
   }
   s += '</svg>';
   document.getElementById('scarfSvgWrap').innerHTML = s;
+}
+
+// ════════════════════════════════════════
+// 이벤트 타임라인 스카프
+// ════════════════════════════════════════
+function renderEventScarf() {
+  const { filterFn } = getScopeFilter();
+  const showList = PARTICIPANTS.filter(p => visible.has(p.id));
+
+  // AOI 시퀀스에서 페이지 전환 이벤트 자동 추출 + 클릭 이벤트 병합
+  const scopedRows = showList.map(p => {
+    const segs = filterFn(p.id);
+    if (!segs.length) return { p, events: [], dur: 0 };
+    const t0 = segs[0].start;
+    const norm = segs.map(s => ({ ...s, start: s.start - t0, end: s.end - t0 }));
+    const dur = norm.at(-1).end;
+
+    const events = [];
+    for (let i = 1; i < norm.length; i++) {
+      if (norm[i].aoiId !== null && norm[i-1].aoiId !== null &&
+          norm[i].page !== norm[i-1].page) {
+        events.push({ t: norm[i].start, type:'page_turn', label:`→P${norm[i].page}` });
+      }
+    }
+    (CLICK_EVENTS[p.id] || []).forEach(e => {
+      const shifted = e.t - t0;
+      if (shifted >= 0 && shifted <= dur) events.push({ ...e, t: shifted });
+    });
+    events.sort((a, b) => a.t - b.t);
+    return { p, events, dur };
+  });
+
+  const scopeMaxT = Math.max(1, ...scopedRows.map(r => r.dur));
+
+  const ROW_H = 24, GAP = 6, LABEL_W = 100, TW = 680, PAD = 8;
+  const svgH = PAD + showList.length * (ROW_H + GAP);
+  const svgW = LABEL_W + TW + 50;
+
+  let s = `<svg width="${svgW}" height="${svgH}" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif;display:block">`;
+
+  scopedRows.forEach(({ p, events, dur }, ri) => {
+    const y = PAD + ri * (ROW_H + GAP);
+    const pi = PARTICIPANTS.indexOf(p);
+    const pc = P_COLORS[pi];
+    const baseline = y + ROW_H - 4;
+    const isSel = selPid === p.id;
+
+    if (isSel) {
+      s += `<rect x="0" y="${y-2}" width="${svgW}" height="${ROW_H+4}" fill="rgba(14,99,156,0.12)" rx="2"/>`;
+    }
+    // 레이블
+    s += `<text x="${LABEL_W-8}" y="${baseline}" fill="${pc}" font-size="10" text-anchor="end" font-weight="600">${p.name}</text>`;
+    // 베이스라인
+    s += `<line x1="${LABEL_W}" y1="${baseline}" x2="${LABEL_W+TW}" y2="${baseline}" stroke="#2e2e2e" stroke-width="1"/>`;
+
+    events.forEach(ev => {
+      const et = EVENT_TYPES[ev.type];
+      if (!et) return;
+      const x = LABEL_W + (ev.t / scopeMaxT) * TW;
+      const tip = `${ev.label} · ${ev.t.toFixed(1)}s`;
+      // 공통: 세로선
+      s += `<line x1="${x}" y1="${baseline}" x2="${x}" y2="${baseline-16}" stroke="${et.color}" stroke-width="1.5" opacity="0.7"/>`;
+      if (ev.type === 'page_turn') {
+        // 삼각형 ▲
+        s += `<polygon points="${x},${baseline-17} ${x-5},${baseline-9} ${x+5},${baseline-9}" fill="${et.color}"><title>${tip}</title></polygon>`;
+      } else if (ev.type === 'answer_sel') {
+        // 원 ●
+        s += `<circle cx="${x}" cy="${baseline-20}" r="5" fill="${et.color}"><title>${tip}</title></circle>`;
+      } else if (ev.type === 'answer_conf') {
+        // 다이아몬드 ◆
+        s += `<polygon points="${x},${baseline-25} ${x+5},${baseline-18} ${x},${baseline-11} ${x-5},${baseline-18}" fill="${et.color}"><title>${tip}</title></polygon>`;
+      }
+    });
+  });
+
+  s += '</svg>';
+  document.getElementById('eventSvgWrap').innerHTML = s;
+
+  // 범례
+  document.getElementById('eventLegend').innerHTML = Object.entries(EVENT_TYPES).map(([, et]) => {
+    const icon = et.shape === 'tri'
+      ? `<svg width="12" height="10"><polygon points="6,0 0,10 12,10" fill="${et.color}"/></svg>`
+      : et.shape === 'circle'
+      ? `<svg width="10" height="10"><circle cx="5" cy="5" r="5" fill="${et.color}"/></svg>`
+      : `<svg width="10" height="10"><polygon points="5,0 10,5 5,10 0,5" fill="${et.color}"/></svg>`;
+    return `<span class="ev-legend-item">${icon}<span>${et.label}</span></span>`;
+  }).join('');
 }
 
 // ════════════════════════════════════════
